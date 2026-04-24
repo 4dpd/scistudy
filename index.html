@@ -626,7 +626,7 @@ a{text-decoration:none;color:inherit}
 <div class="modal-overlay" id="mediaModal">
   <div class="modal">
     <div class="modal-title">
-      미디어 링크 삽입
+      <span id="mediaModalTitle">미디어 링크 삽입</span>
       <div class="modal-close" onclick="closeMediaModal()">✕</div>
     </div>
     <div class="form-group">
@@ -655,7 +655,7 @@ a{text-decoration:none;color:inherit}
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeMediaModal()" style="width:auto;padding:8px 20px">취소</button>
-      <button class="btn btn-teacher" onclick="insertMediaLink()" style="width:auto;padding:8px 20px">삽입</button>
+      <button class="btn btn-teacher" onclick="insertMediaLink()" id="mediaModalBtn" style="width:auto;padding:8px 20px">삽입</button>
     </div>
   </div>
 </div>
@@ -664,7 +664,7 @@ a{text-decoration:none;color:inherit}
 <div class="modal-overlay" id="quizModal">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">
-      퀴즈 삽입
+      <span id="quizModalTitle">퀴즈 삽입</span>
       <div class="modal-close" onclick="closeQuizModal()">✕</div>
     </div>
     <div class="form-group">
@@ -708,7 +708,7 @@ a{text-decoration:none;color:inherit}
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeQuizModal()" style="width:auto;padding:8px 20px">취소</button>
-      <button class="btn btn-teacher" onclick="insertQuiz()" style="width:auto;padding:8px 20px">삽입</button>
+      <button class="btn btn-teacher" onclick="insertQuiz()" id="quizModalBtn" style="width:auto;padding:8px 20px">삽입</button>
     </div>
   </div>
 </div>
@@ -726,7 +726,7 @@ a{text-decoration:none;color:inherit}
     </div>
     <div class="form-group">
       <label class="form-label">수준 (카테고리 단계)</label>
-      <select class="form-input" id="unitLevel">
+      <select class="form-input" id="unitLevel" onchange="filterParentByLevel()">
         <option value="1">Lv1 — 대단원</option>
         <option value="2">Lv2 — 중단원</option>
         <option value="3">Lv3 — 소단원</option>
@@ -757,14 +757,13 @@ a{text-decoration:none;color:inherit}
 // FIREBASE CONFIG - 본인 프로젝트 설정으로 교체하세요
 // ============================================================
 const firebaseConfig = {
-    apiKey: "AIzaSyDjQ_SK7TAMw09iPkKtbSCQBRGWopU0bIA",
-    authDomain: "aisciencetutor-705c1.firebaseapp.com",
-    projectId: "aisciencetutor-705c1",
-    storageBucket: "aisciencetutor-705c1.firebasestorage.app",
-    messagingSenderId: "957374578745",
-    appId: "1:957374578745:web:78bd804e406c7b9940cde8",
-    measurementId: "G-7SCQPXZYNX"
-  };
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -1059,11 +1058,19 @@ function renderTree() {
 }
 
 function updateParentSelect() {
+  filterParentByLevel();
+}
+
+function filterParentByLevel() {
+  const selectedLevel = parseInt(document.getElementById('unitLevel').value) || 1;
   const sel = document.getElementById('unitParent');
   sel.innerHTML = '<option value="">없음 (최상위)</option>';
-  units.filter(u => (u.level || 1) < 5).forEach(u => {
-    sel.innerHTML += `<option value="${u.id}">${'—'.repeat((u.level||1)-1)} ${u.name}</option>`;
-  });
+  if (selectedLevel > 1) {
+    // 선택한 레벨보다 상위 레벨인 단원만 표시
+    units.filter(u => (u.level || 1) < selectedLevel).forEach(u => {
+      sel.innerHTML += `<option value="${u.id}">${'—'.repeat((u.level||1)-1)} ${u.name}</option>`;
+    });
+  }
 }
 
 async function selectUnit(unitId) {
@@ -1074,6 +1081,11 @@ async function selectUnit(unitId) {
     document.getElementById('editArea').innerHTML = contentDoc.data().html || '<p>내용을 입력하세요...</p>';
   } else {
     document.getElementById('editArea').innerHTML = '<p>내용을 입력하세요...</p>';
+  }
+  // 미리보기 탭이 열려있으면 자동 갱신
+  const previewTab = document.querySelector('.editor-tab[data-tab="preview"]');
+  if (previewTab && previewTab.classList.contains('active')) {
+    renderPreview();
   }
 }
 
@@ -1325,17 +1337,42 @@ function insertAtCursor(html) {
 }
 
 // ============================================================
-// TEACHER: MEDIA LINK INSERT
+// TEACHER: MEDIA LINK INSERT / EDIT
 // ============================================================
-function openMediaModal() {
-  saveSelection();
+let editingMediaLink = null; // 수정 중인 링크 요소
+
+function openMediaModal(existingLink) {
+  if (existingLink) {
+    // 기존 링크 수정 모드
+    editingMediaLink = existingLink;
+    document.getElementById('mediaDisplayText').value = existingLink.textContent.replace(/[\[\]]/g, '');
+    document.getElementById('mediaDriveLink').value = existingLink.dataset.original || '';
+    selectedMediaType = existingLink.dataset.type || 'image';
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.type-btn').forEach(b => {
+      if (b.textContent === {image:'이미지',video:'동영상',html:'HTML',gif:'GIF'}[selectedMediaType]) b.classList.add('active');
+    });
+    document.getElementById('mediaModalTitle').textContent = '미디어 링크 수정';
+    document.getElementById('mediaModalBtn').textContent = '수정';
+    previewDriveLink();
+  } else {
+    // 새 삽입 모드
+    editingMediaLink = null;
+    saveSelection();
+    document.getElementById('mediaDisplayText').value = '';
+    document.getElementById('mediaDriveLink').value = '';
+    document.getElementById('linkPreview').classList.remove('show');
+    document.getElementById('mediaModalTitle').textContent = '미디어 링크 삽입';
+    document.getElementById('mediaModalBtn').textContent = '삽입';
+    selectedMediaType = 'image';
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn').classList.add('active');
+  }
   document.getElementById('mediaModal').classList.add('show');
-  document.getElementById('mediaDisplayText').value = '';
-  document.getElementById('mediaDriveLink').value = '';
-  document.getElementById('linkPreview').classList.remove('show');
 }
 function closeMediaModal() {
   document.getElementById('mediaModal').classList.remove('show');
+  editingMediaLink = null;
 }
 
 function selectMediaType(btn, type) {
@@ -1363,22 +1400,72 @@ function insertMediaLink() {
   if (!text || !url) return showToast('표시 텍스트와 링크를 모두 입력하세요.', 'error');
   
   const directUrl = getDirectUrl(url, selectedMediaType);
-  const linkHtml = `<a class="media-link" data-type="${selectedMediaType}" data-url="${directUrl}" data-original="${url}" onclick="return false;">[${text}]</a>&nbsp;`;
   
-  closeMediaModal();
-  insertAtCursor(linkHtml);
-  showToast('미디어 링크가 삽입되었습니다.', 'success');
+  if (editingMediaLink) {
+    // 수정 모드: 기존 링크 업데이트
+    editingMediaLink.textContent = `[${text}]`;
+    editingMediaLink.dataset.type = selectedMediaType;
+    editingMediaLink.dataset.url = directUrl;
+    editingMediaLink.dataset.original = url;
+    closeMediaModal();
+    showToast('미디어 링크가 수정되었습니다.', 'success');
+  } else {
+    // 새 삽입 모드
+    const linkHtml = `<a class="media-link" data-type="${selectedMediaType}" data-url="${directUrl}" data-original="${url}" onclick="return false;">[${text}]</a>&nbsp;`;
+    closeMediaModal();
+    insertAtCursor(linkHtml);
+    showToast('미디어 링크가 삽입되었습니다.', 'success');
+  }
+  bindEditAreaLinks();
 }
 
 // ============================================================
-// TEACHER: QUIZ INSERT
+// TEACHER: QUIZ INSERT / EDIT
 // ============================================================
-function openQuizModal() {
-  saveSelection();
+let editingQuizLink = null;
+
+function openQuizModal(existingLink) {
+  if (existingLink) {
+    // 수정 모드
+    editingQuizLink = existingLink;
+    try {
+      let quizData;
+      if (existingLink.dataset.quizB64) {
+        quizData = JSON.parse(decodeURIComponent(escape(atob(existingLink.dataset.quizB64))));
+      } else if (existingLink.dataset.quiz) {
+        quizData = JSON.parse(existingLink.dataset.quiz);
+      }
+      if (quizData) {
+        document.getElementById('quizQuestion').value = quizData.question || '';
+        document.getElementById('quizContext').value = quizData.context || '';
+        document.getElementById('quizPoints').value = quizData.points || 10;
+        document.getElementById('quizRetries').value = quizData.retries || 2;
+        const optInputs = document.querySelectorAll('#quizOptions .form-input');
+        (quizData.options || []).forEach((opt, i) => { if (optInputs[i]) optInputs[i].value = opt; });
+        const radios = document.querySelectorAll('input[name="correctOpt"]');
+        if (radios[quizData.correct]) radios[quizData.correct].checked = true;
+      }
+    } catch(e) { console.error(e); }
+    document.getElementById('quizModalTitle').textContent = '퀴즈 수정';
+    document.getElementById('quizModalBtn').textContent = '수정';
+  } else {
+    // 새 삽입 모드
+    editingQuizLink = null;
+    saveSelection();
+    document.getElementById('quizQuestion').value = '';
+    document.getElementById('quizContext').value = '';
+    document.getElementById('quizPoints').value = 10;
+    document.getElementById('quizRetries').value = 2;
+    document.querySelectorAll('#quizOptions .form-input').forEach(inp => inp.value = '');
+    document.querySelector('input[name="correctOpt"]').checked = true;
+    document.getElementById('quizModalTitle').textContent = '퀴즈 삽입';
+    document.getElementById('quizModalBtn').textContent = '삽입';
+  }
   document.getElementById('quizModal').classList.add('show');
 }
 function closeQuizModal() {
   document.getElementById('quizModal').classList.remove('show');
+  editingQuizLink = null;
 }
 
 function insertQuiz() {
@@ -1386,26 +1473,33 @@ function insertQuiz() {
   const context = document.getElementById('quizContext').value.trim();
   const points = document.getElementById('quizPoints').value;
   const retries = document.getElementById('quizRetries').value;
-  const optInputs = document.querySelectorAll('#quizOptions input[type="text"], #quizOptions input.form-input');
   const correctIdx = document.querySelector('input[name="correctOpt"]:checked').value;
   
-  if (!question) return;
+  if (!question) return showToast('문제를 입력하세요.', 'error');
   
   const options = [];
   document.querySelectorAll('#quizOptions .form-input').forEach(inp => {
     if (inp.value.trim()) options.push(inp.value.trim());
   });
   
-  const quizId = 'quiz_' + Date.now();
+  const quizId = editingQuizLink ? ('quiz_edit_' + Date.now()) : ('quiz_' + Date.now());
   const quizObj = { id: quizId, question, context, options, correct: parseInt(correctIdx), points: parseInt(points), retries: parseInt(retries) };
-  // Base64로 인코딩하여 HTML 속성에서 따옴표 충돌 방지
   const quizB64 = btoa(unescape(encodeURIComponent(JSON.stringify(quizObj))));
   
-  const quizHtml = `<span class="quiz-link" data-quiz-b64="${quizB64}" onclick="return false;">Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}</span>`;
-  
-  closeQuizModal();
-  insertAtCursor(quizHtml + '&nbsp;');
-  showToast('퀴즈가 삽입되었습니다.', 'success');
+  if (editingQuizLink) {
+    // 수정 모드
+    editingQuizLink.dataset.quizB64 = quizB64;
+    editingQuizLink.textContent = `Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}`;
+    closeQuizModal();
+    showToast('퀴즈가 수정되었습니다.', 'success');
+  } else {
+    // 새 삽입 모드
+    const quizHtml = `<span class="quiz-link" data-quiz-b64="${quizB64}" onclick="return false;">Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}</span>`;
+    closeQuizModal();
+    insertAtCursor(quizHtml + '&nbsp;');
+    showToast('퀴즈가 삽입되었습니다.', 'success');
+  }
+  bindEditAreaLinks();
   
   // Clear form
   document.getElementById('quizQuestion').value = '';
@@ -1416,6 +1510,27 @@ function insertQuiz() {
 // ============================================================
 // TEACHER: SETTINGS
 // ============================================================
+
+// 에디터 내 미디어/퀴즈 링크 클릭 시 수정 모달 열기
+function bindEditAreaLinks() {
+  const editArea = document.getElementById('editArea');
+  editArea.querySelectorAll('.media-link').forEach(link => {
+    link.onclick = (e) => { e.preventDefault(); openMediaModal(link); };
+  });
+  editArea.querySelectorAll('.quiz-link').forEach(link => {
+    link.onclick = (e) => { e.preventDefault(); openQuizModal(link); };
+  });
+}
+
+// 에디터에 내용이 로드될 때마다 바인딩
+const editAreaObserver = new MutationObserver(() => { bindEditAreaLinks(); });
+setTimeout(() => {
+  const ea = document.getElementById('editArea');
+  if (ea) {
+    editAreaObserver.observe(ea, { childList: true, subtree: true });
+    bindEditAreaLinks();
+  }
+}, 500);
 async function saveSettings() {
   showLoading(true);
   try {
