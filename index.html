@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SciStudy — 과학 학습 플랫폼</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --mint-50:#E8FAF3;--mint-100:#C2F0DE;--mint-200:#7DDDB8;--mint-400:#3CC494;--mint-500:#2BA97D;--mint-600:#1E8A64;--mint-700:#16694C;--mint-800:#0D4A35;
+  --lav-50:#F0EEFF;--lav-100:#D9D5FC;--lav-200:#B8B1F7;--lav-400:#8B80E8;--lav-500:#6C5FD9;--lav-600:#5548B5;--lav-700:#3F3591;--lav-800:#2A236D;
+  --coral-50:#FFF0ED;--coral-100:#FFDAD2;--coral-400:#F4845F;--coral-600:#C4563A;
+  --amber-50:#FFF8E8;--amber-100:#FFEBB3;--amber-400:#F5B742;--amber-600:#C48A1A;--amber-800:#7A5510;
+  --rose-50:#FFF0F3;--rose-100:#FFD6DE;--rose-400:#F06B8A;
+  --sky-50:#EDF7FF;--sky-100:#D0EAFF;--sky-400:#5AADF5;
+  --red-50:#FFF0F0;--red-100:#FFD4D4;--red-400:#E85555;--red-600:#B33A3A;
+  --gray-50:#F8F7F5;--gray-100:#EDECEA;--gray-200:#DDDBD7;--gray-300:#C5C3BF;--gray-400:#9E9C97;--gray-500:#7A7874;--gray-600:#5A5855;--gray-700:#3D3B39;--gray-800:#252422;
+  --bg:#FAFAF8;--bg-card:#FFFFFF;--bg-surface:#F4F3F0;
+  --text:#2A2825;--text-secondary:#6B6966;--text-muted:#9E9C97;
+  --border:#E8E6E3;--border-hover:#D0CECC;
+  --radius:10px;--radius-lg:14px;--radius-xl:20px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.04);--shadow-md:0 4px 12px rgba(0,0,0,0.06);--shadow-lg:0 8px 30px rgba(0,0,0,0.08);
+  --font-display:'Outfit',sans-serif;--font-body:'Noto Sans KR','Outfit',sans-serif;
+  --topbar-h:54px;--nav-h:42px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow:hidden;height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;outline:none}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gray-400)}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.fade-in{animation:fadeIn 0.3s ease}
+.slide-in{animation:slideIn 0.3s ease}
+.scale-in{animation:scaleIn 0.25s ease}
+
+/* ===== LOGIN PAGE ===== */
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,var(--mint-50) 0%,var(--lav-50) 50%,var(--coral-50) 100%);padding:20px}
+.login-card{background:var(--bg-card);border-radius:var(--radius-xl);padding:40px 36px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);animation:fadeIn 0.5s ease}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--mint-400),var(--lav-400));margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
+.login-logo-icon svg{width:28px;height:28px;fill:#fff}
+.login-logo h1{font-family:var(--font-display);font-size:24px;font-weight:600;color:var(--text)}
+.login-logo p{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.role-switch{display:flex;background:var(--bg-surface);border-radius:var(--radius);padding:3px;margin-bottom:24px}
+.role-btn{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:500;text-align:center;transition:all 0.2s;color:var(--text-secondary)}
+.role-btn.active-student{background:var(--mint-50);color:var(--mint-700);box-shadow:var(--shadow-sm)}
+.role-btn.active-teacher{background:var(--lav-50);color:var(--lav-700);box-shadow:var(--shadow-sm)}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:5px}
+.form-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg-card);color:var(--text);transition:border-color 0.2s}
+.form-input:focus{border-color:var(--mint-400)}
+.form-input.teacher-focus:focus{border-color:var(--lav-400)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:12px;border-radius:var(--radius);font-size:14px;font-weight:500;width:100%;transition:all 0.15s}
+.btn:active{transform:scale(0.98)}
+.btn-student{background:var(--mint-400);color:#fff}
+.btn-student:hover{background:var(--mint-500)}
+.btn-teacher{background:var(--lav-400);color:#fff}
+.btn-teacher:hover{background:var(--lav-500)}
+.btn-outline{border:1.5px solid var(--border);color:var(--text-secondary);background:var(--bg-card)}
+.btn-outline:hover{border-color:var(--border-hover);background:var(--bg-surface)}
+.login-footer{text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)}
+.login-footer a{color:var(--lav-500);font-weight:500}
+.login-tabs{display:flex;gap:8px;margin-bottom:20px;justify-content:center}
+.login-tab{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:all 0.2s}
+.login-tab.active{background:var(--mint-50);color:var(--mint-700);border-color:var(--mint-200)}
+.alert-box{padding:10px 14px;border-radius:var(--radius);font-size:12px;margin-bottom:14px;display:none}
+.alert-error{background:var(--red-50);color:var(--red-600);border:1px solid var(--red-100);display:block}
+.alert-success{background:var(--mint-50);color:var(--mint-700);border:1px solid var(--mint-100);display:block}
+
+/* ===== APP SHELL ===== */
+.app{display:none;height:100vh;flex-direction:column}
+.app.visible{display:flex}
+.topbar{height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.topbar-logo.student-logo{background:linear-gradient(135deg,var(--mint-200),var(--mint-400))}
+.topbar-logo.teacher-logo{background:linear-gradient(135deg,var(--lav-200),var(--lav-400))}
+.topbar-logo svg{width:16px;height:16px;fill:#fff}
+.topbar-title{font-family:var(--font-display);font-size:15px;font-weight:500}
+.topbar-mode{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:500}
+.topbar-mode.student-mode{background:var(--mint-50);color:var(--mint-700)}
+.topbar-mode.teacher-mode{background:var(--lav-50);color:var(--lav-700)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-btn{padding:6px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;border:1.5px solid var(--border);color:var(--text-secondary);transition:all 0.15s}
+.topbar-btn:hover{background:var(--bg-surface);border-color:var(--border-hover)}
+.topbar-btn.primary{background:var(--lav-400);color:#fff;border-color:var(--lav-400)}
+.topbar-btn.primary:hover{background:var(--lav-500)}
+.topbar-btn.save{background:var(--mint-400);color:#fff;border-color:var(--mint-400)}
+.topbar-btn.save:hover{background:var(--mint-500)}
+.topbar-select{padding:6px 10px;border-radius:var(--radius);font-size:12px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text);cursor:pointer}
+.topbar-search{padding:6px 12px;border-radius:var(--radius);font-size:12px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text);width:160px}
+.topbar-badge{font-size:11px;padding:3px 10px;border-radius:12px;background:var(--mint-50);color:var(--mint-700);font-weight:500}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border:1.5px solid var(--border)}
+.user-menu{position:absolute;top:48px;right:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:6px;box-shadow:var(--shadow-lg);display:none;z-index:100;min-width:160px}
+.user-menu.show{display:block}
+.user-menu-item{padding:8px 12px;border-radius:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:background 0.15s}
+.user-menu-item:hover{background:var(--bg-surface)}
+.user-menu-item.danger{color:var(--red-400)}
+
+/* ===== UNIT NAV ===== */
+.unit-nav{height:var(--nav-h);display:flex;align-items:center;gap:2px;padding:0 16px;background:var(--bg-card);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.unit-nav-item{padding:8px 16px;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all 0.15s;border-radius:6px 6px 0 0}
+.unit-nav-item:hover{color:var(--text);background:var(--bg-surface)}
+.unit-nav-item.active{color:var(--mint-700);border-bottom-color:var(--mint-400);background:var(--mint-50)}
+.unit-nav-item.locked{color:var(--text-muted);cursor:not-allowed}
+.unit-nav-item.locked::after{content:' 🔒';font-size:10px}
+
+/* ===== MAIN CONTENT AREA ===== */
+.main-content{flex:1;display:flex;overflow:hidden}
+.panel{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.panel-header{padding:8px 14px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:38px}
+.panel-header-label{font-size:11px;font-weight:500;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.panel-header-actions{display:flex;gap:4px}
+.panel-body{flex:1;padding:14px;overflow-y:auto}
+.resizer{width:6px;background:var(--bg-surface);cursor:col-resize;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s}
+.resizer:hover{background:var(--gray-200)}
+.resizer-dot{width:2px;height:20px;background:var(--gray-300);border-radius:1px}
+
+/* ===== SMALL BUTTONS ===== */
+.btn-xs{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;border:1.5px solid var(--border);color:var(--text-secondary);transition:all 0.15s;background:var(--bg-card)}
+.btn-xs:hover{background:var(--bg-surface)}
+.btn-xs.mint{background:var(--mint-50);color:var(--mint-700);border-color:var(--mint-200)}
+.btn-xs.lav{background:var(--lav-50);color:var(--lav-700);border-color:var(--lav-200)}
+.btn-xs.amber{background:var(--amber-50);color:var(--amber-600);border-color:var(--amber-100)}
+.btn-xs.red{background:var(--red-50);color:var(--red-600);border-color:var(--red-100)}
+
+/* ===== TEACHER SIDEBAR ===== */
+.teacher-sidebar{width:220px;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 14px 6px}
+.sidebar-search{margin:0 10px 8px;padding:7px 10px;border-radius:var(--radius);border:1.5px solid var(--border);font-size:12px;background:var(--bg-card);color:var(--text)}
+.sidebar-search:focus{border-color:var(--lav-400)}
+.tree-list{flex:1;overflow-y:auto;padding:0 6px 10px}
+.tree-item{padding:7px 10px;border-radius:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.12s;margin:1px 0}
+.tree-item:hover{background:var(--bg-surface)}
+.tree-item.active{background:var(--lav-50);color:var(--lav-700)}
+.tree-item .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tree-l1 .dot{background:var(--lav-400)}
+.tree-l2{padding-left:22px}
+.tree-l2 .dot{background:var(--mint-400)}
+.tree-l3{padding-left:38px}
+.tree-l3 .dot{background:var(--coral-400)}
+.tree-l4{padding-left:54px}
+.tree-l4 .dot{background:var(--amber-400)}
+.tree-l5{padding-left:70px}
+.tree-l5 .dot{background:var(--rose-400)}
+.tree-add{padding:8px;margin:6px 10px;border-radius:var(--radius);font-size:12px;color:var(--lav-500);border:1.5px dashed var(--lav-200);text-align:center;cursor:pointer;transition:all 0.15s}
+.tree-add:hover{background:var(--lav-50);border-color:var(--lav-400)}
+
+/* ===== TEACHER EDITOR ===== */
+.editor-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg-surface);flex-shrink:0}
+.editor-tab{padding:9px 18px;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
+.editor-tab:hover{color:var(--text);background:var(--bg-card)}
+.editor-tab.active{color:var(--lav-700);border-bottom-color:var(--lav-400);background:var(--bg-card)}
+.toolbar{display:flex;gap:3px;padding:8px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+.tool-btn{padding:5px 10px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:all 0.12s;background:var(--bg-card);font-weight:500}
+.tool-btn:hover{background:var(--bg-surface)}
+.tool-btn.special{color:var(--lav-600);border-color:var(--lav-200)}
+.tool-btn.special:hover{background:var(--lav-50)}
+.tool-btn.quiz-tool{color:var(--amber-600);border-color:var(--amber-100)}
+.tool-btn.quiz-tool:hover{background:var(--amber-50)}
+.edit-area{flex:1;padding:16px;overflow-y:auto;font-size:14px;line-height:1.9;color:var(--text)}
+.edit-area[contenteditable]{outline:none}
+.edit-area p{margin-bottom:10px}
+
+/* ===== MEDIA LINK INSERT MODAL ===== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius-xl);padding:28px;width:90%;max-width:480px;box-shadow:var(--shadow-lg);animation:scaleIn 0.25s ease}
+.modal-title{font-size:16px;font-weight:500;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:background 0.15s}
+.modal-close:hover{background:var(--bg-surface)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.type-selector{display:flex;gap:6px;margin-top:6px}
+.type-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;border:1.5px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:all 0.15s}
+.type-btn:hover{background:var(--bg-surface)}
+.type-btn.active{border-color:var(--lav-400);background:var(--lav-50);color:var(--lav-700)}
+.link-preview{margin-top:12px;padding:10px;border-radius:var(--radius);background:var(--bg-surface);font-size:12px;color:var(--text-secondary);display:none}
+.link-preview.show{display:block}
+.link-preview .converted{font-family:monospace;font-size:11px;color:var(--mint-700);word-break:break-all;margin-top:4px}
+.drive-notice{font-size:11px;color:var(--amber-600);background:var(--amber-50);padding:8px 10px;border-radius:6px;margin-top:10px;line-height:1.5}
+
+/* ===== QUIZ INSERT ===== */
+.quiz-block{background:var(--amber-50);border:1.5px dashed var(--amber-400);border-radius:var(--radius);padding:12px;margin:12px 0}
+.quiz-block-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.quiz-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--amber-100);color:var(--amber-800);font-weight:500}
+.quiz-title{font-size:13px;font-weight:500;color:var(--amber-800)}
+.quiz-option{padding:6px 10px;border:1px solid var(--border);border-radius:6px;margin:4px 0;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+.quiz-option .radio{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gray-300);flex-shrink:0}
+.quiz-option.correct .radio{border-color:var(--mint-400);background:var(--mint-50)}
+.quiz-option.correct{color:var(--mint-700)}
+
+/* ===== STUDENT CONTENT ===== */
+.content-text{font-size:14px;line-height:2;color:var(--text)}
+.content-text p{margin-bottom:10px}
+.media-link{color:var(--lav-600);text-decoration:underline;cursor:pointer;transition:color 0.15s}
+.media-link:hover{color:var(--lav-800)}
+.quiz-link{color:var(--amber-800);text-decoration:underline;cursor:pointer;background:var(--amber-50);padding:1px 6px;border-radius:4px;font-weight:500;transition:all 0.15s}
+.quiz-link:hover{background:var(--amber-100)}
+.content-legend{display:flex;gap:14px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted)}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+.legend-media{background:var(--lav-100)}
+.legend-quiz{background:var(--amber-100)}
+
+/* ===== MID PANEL (Quiz / Media toggle) ===== */
+.mid-indicator{display:flex;align-items:center;gap:5px}
+.ind-dot{width:8px;height:8px;border-radius:50%;transition:background 0.2s}
+.ind-idle{background:var(--gray-300)}
+.ind-quiz{background:var(--amber-400)}
+.ind-media{background:var(--lav-400)}
+.mid-view{display:none;animation:fadeIn 0.2s ease}
+.mid-view.active{display:block}
+.idle-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);text-align:center;gap:10px;padding:40px}
+.idle-icon{width:52px;height:52px;border-radius:50%;background:var(--bg-surface);display:flex;align-items:center;justify-content:center}
+.idle-icon svg{width:24px;height:24px;fill:var(--gray-400)}
+
+/* Quiz */
+.quiz-progress{display:flex;gap:3px;margin-bottom:10px}
+.prog-dot{height:4px;flex:1;border-radius:2px;background:var(--gray-100)}
+.prog-dot.done{background:var(--mint-400)}
+.prog-dot.current{background:var(--amber-400)}
+.quiz-context{font-size:12px;color:var(--text-muted);padding:8px 10px;background:var(--bg-surface);border-radius:8px;margin-bottom:10px;line-height:1.6}
+.q-card{background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.q-num{font-size:11px;font-weight:500;color:var(--amber-600);margin-bottom:4px}
+.q-text{font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.6}
+.q-opt{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;margin:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;transition:all 0.15s}
+.q-opt:hover{background:var(--bg-surface);border-color:var(--border-hover)}
+.q-opt.selected{background:var(--mint-50);border-color:var(--mint-400);color:var(--mint-700)}
+.q-opt.wrong{background:var(--red-50);border-color:var(--red-400);color:var(--red-600)}
+.q-radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--gray-300);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.q-opt.selected .q-radio{border-color:var(--mint-400)}
+.q-opt.wrong .q-radio{border-color:var(--red-400)}
+.q-check{width:7px;height:7px;border-radius:50%}
+.q-opt.selected .q-check{background:var(--mint-400)}
+.pass-bar{padding:10px 12px;border-radius:var(--radius);margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:8px}
+.pass-bar.info{background:var(--amber-50);color:var(--amber-800)}
+.pass-bar.success{background:var(--mint-50);color:var(--mint-700)}
+.pass-bar.fail{background:var(--red-50);color:var(--red-600)}
+
+/* Media Viewer */
+.media-container{border-radius:var(--radius);overflow:hidden;min-height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:var(--bg-surface)}
+.media-container img{max-width:100%;max-height:400px;border-radius:6px}
+.media-container iframe{width:100%;height:350px;border:none;border-radius:6px}
+.media-controls{display:flex;gap:4px;margin-top:8px}
+
+/* ===== CHAT (AI Tutor) ===== */
+.chat-container{display:flex;flex-direction:column;height:100%}
+.chat-messages{flex:1;overflow-y:auto;padding-bottom:8px}
+.chat-bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.7;margin-bottom:6px;max-width:88%;word-wrap:break-word}
+.chat-ai{background:var(--bg-surface);color:var(--text);border-bottom-left-radius:4px}
+.chat-user{background:var(--mint-100);color:var(--mint-800);margin-left:auto;border-bottom-right-radius:4px}
+.chat-input-area{display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--border);margin-top:auto}
+.chat-upload-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);font-size:16px;transition:all 0.15s;flex-shrink:0}
+.chat-upload-btn:hover{background:var(--bg-surface)}
+.chat-input{flex:1;padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);font-size:13px;background:var(--bg-card);color:var(--text)}
+.chat-input:focus{border-color:var(--mint-400)}
+.chat-send{padding:8px 16px;border-radius:20px;background:var(--mint-400);color:#fff;font-size:13px;font-weight:500;transition:all 0.15s}
+.chat-send:hover{background:var(--mint-500)}
+
+/* ===== RANKING / SCORES ===== */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat-card{background:var(--bg-surface);border-radius:var(--radius);padding:14px}
+.stat-label{font-size:11px;color:var(--text-muted)}
+.stat-val{font-size:22px;font-weight:500;font-family:var(--font-display);margin-top:2px}
+.rank-table{width:100%;font-size:12px;border-collapse:collapse}
+.rank-table th{text-align:left;padding:8px 10px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border);font-size:11px}
+.rank-table td{padding:10px;border-bottom:1px solid var(--border)}
+.rank-table tr:hover{background:var(--bg-surface)}
+.rank-table tr.me{background:var(--mint-50)}
+.rank-medal{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;font-family:var(--font-display)}
+.rank-1{background:var(--amber-100);color:var(--amber-800)}
+.rank-2{background:var(--gray-100);color:var(--gray-600)}
+.rank-3{background:var(--coral-50);color:var(--coral-600)}
+.progress-mini{height:4px;background:var(--gray-100);border-radius:2px;width:80px;display:inline-block;vertical-align:middle;margin-left:6px}
+.progress-fill{height:4px;border-radius:2px;background:var(--mint-400)}
+.badge-pass{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge-pass.pass{background:var(--mint-50);color:var(--mint-700)}
+.badge-pass.fail{background:var(--red-50);color:var(--red-600)}
+.badge-pass.locked{background:var(--gray-100);color:var(--gray-500)}
+
+/* ===== PAGINATION ===== */
+.pagination{display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 0;margin-top:8px}
+.page-btn{padding:4px 10px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:var(--bg-card);color:var(--text-secondary);transition:all 0.15s}
+.page-btn:hover{background:var(--bg-surface)}
+.page-btn.active{background:var(--mint-50);color:var(--mint-700);border-color:var(--mint-200)}
+
+/* ===== TEACHER SETTINGS ===== */
+.settings-section{margin-bottom:20px}
+.settings-title{font-size:14px;font-weight:500;margin-bottom:10px;color:var(--text)}
+.settings-desc{font-size:12px;color:var(--text-muted);margin-bottom:8px}
+
+/* ===== LOADING ===== */
+.loading-spinner{width:24px;height:24px;border:3px solid var(--gray-200);border-top-color:var(--mint-400);border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:none;align-items:center;justify-content:center;z-index:300;flex-direction:column;gap:12px}
+.loading-overlay.show{display:flex}
+.loading-text{font-size:13px;color:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">로딩 중...</div>
+</div>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+      </div>
+      <h1>SciStudy</h1>
+      <p>과학 학습 플랫폼</p>
+    </div>
+
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginView('login')">로그인</div>
+      <div class="login-tab" onclick="switchLoginView('signup')">회원가입</div>
+    </div>
+
+    <div id="alertBox" class="alert-box"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="role-switch">
+        <div class="role-btn active-student" id="loginRoleStudent" onclick="switchLoginRole('student')">학생</div>
+        <div class="role-btn" id="loginRoleTeacher" onclick="switchLoginRole('teacher')">선생님</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">아이디</label>
+        <input class="form-input" id="loginId" placeholder="아이디를 입력하세요">
+      </div>
+      <div class="form-group">
+        <label class="form-label">비밀번호</label>
+        <input class="form-input" id="loginPw" type="password" placeholder="비밀번호를 입력하세요">
+      </div>
+      <button class="btn btn-student" id="loginBtn" onclick="handleLogin()">학생 로그인</button>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signupForm" style="display:none">
+      <div class="role-switch">
+        <div class="role-btn active-student" id="signupRoleStudent" onclick="switchSignupRole('student')">학생</div>
+        <div class="role-btn" id="signupRoleTeacher" onclick="switchSignupRole('teacher')">선생님</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">아이디</label>
+        <input class="form-input" id="signupId" placeholder="사용할 아이디">
+      </div>
+      <div class="form-group">
+        <label class="form-label">비밀번호</label>
+        <input class="form-input" id="signupPw" type="password" placeholder="비밀번호 (6자 이상)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">이름</label>
+        <input class="form-input" id="signupName" placeholder="이름">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">생년월일</label>
+          <input class="form-input" id="signupBirth" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">전화번호</label>
+          <input class="form-input" id="signupPhone" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">소속</label>
+        <input class="form-input" id="signupOrg" placeholder="학교/기관명">
+      </div>
+      <div class="form-group" id="signupEmailGroup" style="display:none">
+        <label class="form-label">이메일</label>
+        <input class="form-input" id="signupEmail" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">주소</label>
+        <input class="form-input" id="signupAddr" placeholder="주소 입력">
+      </div>
+      <button class="btn btn-student" id="signupBtn" onclick="handleSignup()">학생 회원가입</button>
+    </div>
+
+    <div class="login-footer">
+      <span id="loginFooterText">계정이 없으신가요? <a href="#" onclick="switchLoginView('signup');return false">회원가입</a></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TEACHER APP ===== -->
+<div class="app" id="teacherApp">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo teacher-logo"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg></div>
+      <span class="topbar-title">SciStudy</span>
+      <span class="topbar-mode teacher-mode">편집 모드</span>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-btn" onclick="openPreview()">미리보기</button>
+      <button class="topbar-btn" onclick="switchEditorTab('settings')">AI 프롬프트 설정</button>
+      <button class="topbar-btn save" onclick="saveContent()">저장</button>
+      <div style="position:relative">
+        <div class="user-avatar" id="teacherAvatar" onclick="toggleUserMenu('teacher')">T</div>
+        <div class="user-menu" id="teacherUserMenu">
+          <div class="user-menu-item" id="teacherNameDisplay">선생님</div>
+          <div class="user-menu-item danger" onclick="handleLogout()">로그아웃</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Sidebar: Unit Tree -->
+    <div class="teacher-sidebar" id="teacherSidebar">
+      <div class="sidebar-title">단원 목차</div>
+      <input class="sidebar-search" placeholder="단원 검색..." oninput="filterTree(this.value)">
+      <div class="tree-list" id="treeList"></div>
+      <div class="tree-add" onclick="addUnit()">+ 단원 추가</div>
+    </div>
+    <div class="resizer" onmousedown="startResize(event,'teacherSidebar')"><div class="resizer-dot"></div></div>
+
+    <!-- Main Editor -->
+    <div class="panel" style="flex:1" id="editorPanel">
+      <div class="editor-tabs">
+        <div class="editor-tab active" data-tab="edit" onclick="switchEditorTab('edit')">콘텐츠 편집</div>
+        <div class="editor-tab" data-tab="preview" onclick="switchEditorTab('preview')">미리보기</div>
+        <div class="editor-tab" data-tab="settings" onclick="switchEditorTab('settings')">설정</div>
+      </div>
+
+      <!-- Edit Tab -->
+      <div id="editTabContent">
+        <div class="toolbar">
+          <button class="tool-btn" onclick="execCmd('bold')"><b>B</b></button>
+          <button class="tool-btn" onclick="execCmd('italic')"><i>I</i></button>
+          <button class="tool-btn" onclick="execCmd('underline')"><u>U</u></button>
+          <button class="tool-btn" onclick="execCmd('formatBlock','h2')">H1</button>
+          <button class="tool-btn" onclick="execCmd('formatBlock','h3')">H2</button>
+          <button class="tool-btn special" onclick="openMediaModal()">미디어 링크 삽입</button>
+          <button class="tool-btn quiz-tool" onclick="openQuizModal()">퀴즈 삽입</button>
+        </div>
+        <div class="edit-area" id="editArea" contenteditable="true">
+          <p>여기에 교재 내용을 입력하세요...</p>
+        </div>
+      </div>
+
+      <!-- Preview Tab -->
+      <div id="previewTabContent" style="display:none">
+        <div class="panel-header">
+          <span class="panel-header-label">학생 화면 미리보기</span>
+        </div>
+        <div class="panel-body" id="previewArea"></div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settingsTabContent" style="display:none;padding:20px">
+        <div class="settings-section">
+          <div class="settings-title">AI 튜터 시스템 프롬프트</div>
+          <div class="settings-desc">학생이 AI 튜터에게 질문할 때 사용되는 기본 지시문입니다.</div>
+          <textarea class="form-input" id="aiPrompt" rows="5" placeholder="예: 이 과학 수업의 AI 튜터 역할을 해주세요. 학생에게 친절하고 쉬운 언어로 과학 개념을 설명해주세요..." style="resize:vertical"></textarea>
+        </div>
+        <div class="settings-section">
+          <div class="settings-title">ChatGPT API Key</div>
+          <div class="settings-desc">학생 AI 튜터 기능에 사용됩니다.</div>
+          <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-...">
+        </div>
+        <div class="settings-section">
+          <div class="settings-title">단원 통과 조건</div>
+          <div class="settings-desc">퀴즈 정답률이 이 비율 이상이면 다음 단원이 열립니다.</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="form-input" id="passRate" type="number" value="80" min="0" max="100" style="width:80px">
+            <span style="font-size:13px;color:var(--text-secondary)">%</span>
+          </div>
+        </div>
+        <button class="btn btn-teacher" onclick="saveSettings()" style="max-width:200px;margin-top:10px">설정 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STUDENT APP ===== -->
+<div class="app" id="studentApp">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo student-logo"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg></div>
+      <span class="topbar-title">SciStudy</span>
+      <span class="topbar-mode student-mode">학습 모드</span>
+    </div>
+    <div class="topbar-right">
+      <select class="topbar-select" id="teacherSelect" onchange="loadTeacherContent()">
+        <option value="">선생님 선택...</option>
+      </select>
+      <input class="topbar-search" placeholder="전체 검색..." oninput="globalSearch(this.value)">
+      <span class="topbar-badge" id="progressBadge">진도 0%</span>
+      <button class="topbar-btn" onclick="showRanking()">성적/랭킹</button>
+      <div style="position:relative">
+        <div class="user-avatar" id="studentAvatar" onclick="toggleUserMenu('student')">S</div>
+        <div class="user-menu" id="studentUserMenu">
+          <div class="user-menu-item" id="studentNameDisplay">학생</div>
+          <div class="user-menu-item danger" onclick="handleLogout()">로그아웃</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="unit-nav" id="unitNav"></div>
+
+  <div class="main-content" id="studentMainContent">
+    <!-- Left: Content -->
+    <div class="panel" id="studentContentPanel" style="flex:1.1">
+      <div class="panel-header">
+        <span class="panel-header-label">교재 내용</span>
+        <div class="panel-header-actions">
+          <button class="btn-xs" onclick="bookmarkCurrent()">북마크</button>
+          <button class="btn-xs" onclick="addMemo()">메모</button>
+        </div>
+      </div>
+      <div class="panel-body" id="studentContentBody">
+        <div class="content-legend">
+          <div class="legend-item"><div class="legend-dot legend-media"></div>미디어 링크</div>
+          <div class="legend-item"><div class="legend-dot legend-quiz"></div>퀴즈 링크</div>
+        </div>
+        <div class="content-text" id="studentContent">
+          <p style="color:var(--text-muted);text-align:center;padding:40px 0">선생님을 선택하면 교재가 표시됩니다</p>
+        </div>
+        <div class="pagination" id="contentPagination"></div>
+      </div>
+    </div>
+    <div class="resizer" onmousedown="startResize(event,'studentContentPanel')"><div class="resizer-dot"></div></div>
+
+    <!-- Middle: Quiz / Media toggle -->
+    <div class="panel" id="studentMidPanel" style="flex:1.2">
+      <div class="panel-header" id="midPanelHeader">
+        <div class="mid-indicator">
+          <div class="ind-dot ind-idle" id="midIndDot"></div>
+          <span class="panel-header-label" id="midPanelLabel">교재에서 링크를 클릭하세요</span>
+        </div>
+        <div id="midPanelActions"></div>
+      </div>
+      <div class="panel-body" id="midPanelBody">
+        <div class="mid-view active" id="idleView">
+          <div class="idle-placeholder">
+            <div class="idle-icon">
+              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </div>
+            <div style="font-size:14px;font-weight:500">교재에서 링크를 클릭하면</div>
+            <div style="font-size:13px">여기에 퀴즈 또는 미디어가 표시됩니다</div>
+            <div style="font-size:12px;margin-top:4px;display:flex;gap:12px">
+              <span style="color:var(--amber-600)">Q 퀴즈</span>
+              <span style="color:var(--lav-600)">미디어</span>
+            </div>
+          </div>
+        </div>
+        <div class="mid-view" id="quizView"></div>
+        <div class="mid-view" id="mediaView"></div>
+      </div>
+    </div>
+    <div class="resizer" onmousedown="startResize(event,'studentMidPanel')"><div class="resizer-dot"></div></div>
+
+    <!-- Right: AI Tutor -->
+    <div class="panel" id="studentAiPanel" style="flex:0.7">
+      <div class="panel-header">
+        <span class="panel-header-label">AI 튜터</span>
+        <span style="font-size:10px;color:var(--text-muted)">ChatGPT</span>
+      </div>
+      <div class="panel-body" style="display:flex;flex-direction:column">
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble chat-ai">안녕하세요! 과학 공부를 도와드리겠습니다. 궁금한 점을 물어보세요.</div>
+          </div>
+          <div class="chat-input-area">
+            <label class="chat-upload-btn" for="chatImageUpload">+
+              <input type="file" id="chatImageUpload" accept="image/*" style="display:none" onchange="handleChatImage(this)">
+            </label>
+            <input class="chat-input" id="chatInput" placeholder="질문을 입력하세요..." onkeypress="if(event.key==='Enter')sendChat()">
+            <button class="chat-send" onclick="sendChat()">전송</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ranking Modal -->
+  <div class="modal-overlay" id="rankingModal">
+    <div class="modal" style="max-width:700px">
+      <div class="modal-title">
+        성적 · 랭킹
+        <div class="modal-close" onclick="closeRanking()">✕</div>
+      </div>
+      <div id="rankingContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MEDIA INSERT MODAL ===== -->
+<div class="modal-overlay" id="mediaModal">
+  <div class="modal">
+    <div class="modal-title">
+      미디어 링크 삽입
+      <div class="modal-close" onclick="closeMediaModal()">✕</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">표시 텍스트</label>
+      <input class="form-input" id="mediaDisplayText" placeholder="예: 원자 모형 이미지">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Google Drive 공유 링크</label>
+      <input class="form-input" id="mediaDriveLink" placeholder="https://drive.google.com/file/d/.../view?usp=sharing" oninput="previewDriveLink()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">파일 유형</label>
+      <div class="type-selector">
+        <div class="type-btn active" onclick="selectMediaType(this,'image')">이미지</div>
+        <div class="type-btn" onclick="selectMediaType(this,'video')">동영상</div>
+        <div class="type-btn" onclick="selectMediaType(this,'html')">HTML</div>
+        <div class="type-btn" onclick="selectMediaType(this,'gif')">GIF</div>
+      </div>
+    </div>
+    <div class="link-preview" id="linkPreview">
+      <div>변환된 링크:</div>
+      <div class="converted" id="convertedLink"></div>
+    </div>
+    <div class="drive-notice">
+      ⚠ Google Drive 파일의 공유 설정이 "링크가 있는 모든 사용자"로 되어 있어야 학생이 볼 수 있습니다.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeMediaModal()" style="width:auto;padding:8px 20px">취소</button>
+      <button class="btn btn-teacher" onclick="insertMediaLink()" style="width:auto;padding:8px 20px">삽입</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== QUIZ INSERT MODAL ===== -->
+<div class="modal-overlay" id="quizModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">
+      퀴즈 삽입
+      <div class="modal-close" onclick="closeQuizModal()">✕</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">문제</label>
+      <textarea class="form-input" id="quizQuestion" rows="2" placeholder="문제를 입력하세요"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">관련 교재 내용 (힌트)</label>
+      <input class="form-input" id="quizContext" placeholder="이 퀴즈와 관련된 교재 내용 요약">
+    </div>
+    <div class="form-group">
+      <label class="form-label">보기 (정답에 체크)</label>
+      <div id="quizOptions">
+        <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+          <input type="radio" name="correctOpt" value="0" checked>
+          <input class="form-input" placeholder="보기 1" style="flex:1">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+          <input type="radio" name="correctOpt" value="1">
+          <input class="form-input" placeholder="보기 2" style="flex:1">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+          <input type="radio" name="correctOpt" value="2">
+          <input class="form-input" placeholder="보기 3" style="flex:1">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+          <input type="radio" name="correctOpt" value="3">
+          <input class="form-input" placeholder="보기 4" style="flex:1">
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">배점</label>
+        <input class="form-input" id="quizPoints" type="number" value="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">재시도 횟수</label>
+        <input class="form-input" id="quizRetries" type="number" value="2">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeQuizModal()" style="width:auto;padding:8px 20px">취소</button>
+      <button class="btn btn-teacher" onclick="insertQuiz()" style="width:auto;padding:8px 20px">삽입</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD UNIT MODAL ===== -->
+<div class="modal-overlay" id="unitModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">
+      단원 추가
+      <div class="modal-close" onclick="closeUnitModal()">✕</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">단원 이름</label>
+      <input class="form-input" id="unitName" placeholder="예: 물질의 구성">
+    </div>
+    <div class="form-group">
+      <label class="form-label">수준 (카테고리 단계)</label>
+      <select class="form-input" id="unitLevel">
+        <option value="1">Lv1 — 대단원</option>
+        <option value="2">Lv2 — 중단원</option>
+        <option value="3">Lv3 — 소단원</option>
+        <option value="4">Lv4 — 세부항목</option>
+        <option value="5">Lv5 — 하위항목</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">상위 단원 (선택)</label>
+      <select class="form-input" id="unitParent">
+        <option value="">없음 (최상위)</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeUnitModal()" style="width:auto;padding:8px 20px">취소</button>
+      <button class="btn btn-teacher" onclick="saveUnit()" style="width:auto;padding:8px 20px">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FIREBASE + APP SCRIPT ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ============================================================
+// FIREBASE CONFIG - 본인 프로젝트 설정으로 교체하세요
+// ============================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyDjQ_SK7TAMw09iPkKtbSCQBRGWopU0bIA",
+    authDomain: "aisciencetutor-705c1.firebaseapp.com",
+    projectId: "aisciencetutor-705c1",
+    storageBucket: "aisciencetutor-705c1.firebasestorage.app",
+    messagingSenderId: "957374578745",
+    appId: "1:957374578745:web:78bd804e406c7b9940cde8",
+    measurementId: "G-7SCQPXZYNX"
+  };
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ============================================================
+// STATE
+// ============================================================
+let currentUser = null;
+let currentRole = 'student';
+let loginRole = 'student';
+let signupRole = 'student';
+let selectedMediaType = 'image';
+let selectedUnitId = null;
+let currentTeacherId = null;
+let chatHistory = [];
+let units = [];
+let contents = {};
+
+// ============================================================
+// UTILITY: Google Drive Link Conversion
+// ============================================================
+function extractFileId(url) {
+  let m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = url.match(/\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return null;
+}
+
+function getDirectUrl(shareUrl, fileType) {
+  const fileId = extractFileId(shareUrl);
+  if (!fileId) return shareUrl;
+  switch(fileType) {
+    case 'image': case 'gif':
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    case 'video': case 'html':
+      return `https://drive.google.com/file/d/${fileId}/preview`;
+    default:
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+}
+
+function detectFileType(url) {
+  const lower = url.toLowerCase();
+  if (lower.match(/\.(png|jpg|jpeg|webp|bmp|svg)(\?|$)/)) return 'image';
+  if (lower.match(/\.(gif)(\?|$)/)) return 'gif';
+  if (lower.match(/\.(mp4|webm|avi|mov)(\?|$)/)) return 'video';
+  if (lower.match(/\.(html|htm)(\?|$)/)) return 'html';
+  return 'image';
+}
+
+// ============================================================
+// LOGIN / SIGNUP
+// ============================================================
+function switchLoginView(view) {
+  document.getElementById('loginForm').style.display = view === 'login' ? '' : 'none';
+  document.getElementById('signupForm').style.display = view === 'signup' ? '' : 'none';
+  document.querySelectorAll('.login-tab').forEach((t, i) => {
+    t.classList.toggle('active', (view === 'login' && i === 0) || (view === 'signup' && i === 1));
+  });
+  document.getElementById('loginFooterText').innerHTML = view === 'login'
+    ? '계정이 없으신가요? <a href="#" onclick="switchLoginView(\'signup\');return false">회원가입</a>'
+    : '이미 계정이 있으신가요? <a href="#" onclick="switchLoginView(\'login\');return false">로그인</a>';
+  hideAlert();
+}
+
+function switchLoginRole(role) {
+  loginRole = role;
+  document.getElementById('loginRoleStudent').className = 'role-btn' + (role === 'student' ? ' active-student' : '');
+  document.getElementById('loginRoleTeacher').className = 'role-btn' + (role === 'teacher' ? ' active-teacher' : '');
+  const btn = document.getElementById('loginBtn');
+  btn.className = 'btn ' + (role === 'student' ? 'btn-student' : 'btn-teacher');
+  btn.textContent = role === 'student' ? '학생 로그인' : '선생님 로그인';
+  document.getElementById('loginId').className = 'form-input' + (role === 'teacher' ? ' teacher-focus' : '');
+  document.getElementById('loginPw').className = 'form-input' + (role === 'teacher' ? ' teacher-focus' : '');
+}
+
+function switchSignupRole(role) {
+  signupRole = role;
+  document.getElementById('signupRoleStudent').className = 'role-btn' + (role === 'student' ? ' active-student' : '');
+  document.getElementById('signupRoleTeacher').className = 'role-btn' + (role === 'teacher' ? ' active-teacher' : '');
+  const btn = document.getElementById('signupBtn');
+  btn.className = 'btn ' + (role === 'student' ? 'btn-student' : 'btn-teacher');
+  btn.textContent = role === 'student' ? '학생 회원가입' : '선생님 회원가입';
+  document.getElementById('signupEmailGroup').style.display = role === 'teacher' ? '' : 'none';
+}
+
+function showAlert(msg, type) {
+  const box = document.getElementById('alertBox');
+  box.textContent = msg;
+  box.className = 'alert-box ' + (type === 'error' ? 'alert-error' : 'alert-success');
+}
+function hideAlert() { document.getElementById('alertBox').className = 'alert-box'; }
+
+async function handleLogin() {
+  const id = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value;
+  if (!id || !pw) return showAlert('아이디와 비밀번호를 입력하세요.', 'error');
+  
+  showLoading(true);
+  try {
+    const email = `${id}@scistudy.app`;
+    const cred = await auth.signInWithEmailAndPassword(email, pw);
+    const doc = await db.collection('users').doc(cred.user.uid).get();
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.role !== loginRole) {
+        showAlert(`이 계정은 ${data.role === 'student' ? '학생' : '선생님'} 계정입니다.`, 'error');
+        showLoading(false);
+        return;
+      }
+      currentUser = { uid: cred.user.uid, ...data };
+      currentRole = data.role;
+      enterApp();
+    }
+  } catch (e) {
+    showAlert('로그인 실패: 아이디 또는 비밀번호를 확인하세요.', 'error');
+  }
+  showLoading(false);
+}
+
+async function handleSignup() {
+  const id = document.getElementById('signupId').value.trim();
+  const pw = document.getElementById('signupPw').value;
+  const name = document.getElementById('signupName').value.trim();
+  const birth = document.getElementById('signupBirth').value;
+  const phone = document.getElementById('signupPhone').value.trim();
+  const org = document.getElementById('signupOrg').value.trim();
+  const addr = document.getElementById('signupAddr').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+
+  if (!id || !pw || !name) return showAlert('아이디, 비밀번호, 이름은 필수입니다.', 'error');
+  if (pw.length < 6) return showAlert('비밀번호는 6자 이상이어야 합니다.', 'error');
+
+  showLoading(true);
+  try {
+    const fakeEmail = `${id}@scistudy.app`;
+    const cred = await auth.createUserWithEmailAndPassword(fakeEmail, pw);
+    const userData = {
+      role: signupRole, name, birth, phone, org, addr, email: signupRole === 'teacher' ? email : '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('users').doc(cred.user.uid).set(userData);
+    currentUser = { uid: cred.user.uid, ...userData };
+    currentRole = signupRole;
+    showAlert('회원가입 성공!', 'success');
+    setTimeout(() => enterApp(), 500);
+  } catch (e) {
+    if (e.code === 'auth/email-already-in-use') showAlert('이미 존재하는 아이디입니다.', 'error');
+    else showAlert('회원가입 실패: ' + e.message, 'error');
+  }
+  showLoading(false);
+}
+
+function handleLogout() {
+  auth.signOut();
+  currentUser = null;
+  document.getElementById('loginPage').style.display = '';
+  document.getElementById('teacherApp').classList.remove('visible');
+  document.getElementById('studentApp').classList.remove('visible');
+  document.querySelectorAll('.user-menu').forEach(m => m.classList.remove('show'));
+}
+
+function enterApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  if (currentRole === 'teacher') {
+    document.getElementById('teacherApp').classList.add('visible');
+    document.getElementById('teacherAvatar').textContent = currentUser.name ? currentUser.name[0] : 'T';
+    document.getElementById('teacherNameDisplay').textContent = currentUser.name + ' 선생님';
+    loadTeacherUnits();
+  } else {
+    document.getElementById('studentApp').classList.add('visible');
+    document.getElementById('studentAvatar').textContent = currentUser.name ? currentUser.name[0] : 'S';
+    document.getElementById('studentNameDisplay').textContent = currentUser.name;
+    loadTeacherList();
+  }
+}
+
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+
+function toggleUserMenu(role) {
+  const menu = document.getElementById(role + 'UserMenu');
+  menu.classList.toggle('show');
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!menu.contains(e.target)) { menu.classList.remove('show'); document.removeEventListener('click', handler); }
+    });
+  }, 10);
+}
+
+// ============================================================
+// TEACHER: UNIT TREE
+// ============================================================
+async function loadTeacherUnits() {
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid).collection('units').orderBy('order').get();
+    units = [];
+    snap.forEach(doc => units.push({ id: doc.id, ...doc.data() }));
+    renderTree();
+    if (units.length > 0) selectUnit(units[0].id);
+  } catch(e) { console.error('Failed to load units:', e); }
+}
+
+function renderTree() {
+  const list = document.getElementById('treeList');
+  list.innerHTML = '';
+  units.forEach(u => {
+    const div = document.createElement('div');
+    div.className = `tree-item tree-l${u.level || 1}${u.id === selectedUnitId ? ' active' : ''}`;
+    div.innerHTML = `<span class="dot"></span>${u.name}`;
+    div.onclick = () => selectUnit(u.id);
+    list.appendChild(div);
+  });
+  updateParentSelect();
+}
+
+function updateParentSelect() {
+  const sel = document.getElementById('unitParent');
+  sel.innerHTML = '<option value="">없음 (최상위)</option>';
+  units.filter(u => (u.level || 1) < 5).forEach(u => {
+    sel.innerHTML += `<option value="${u.id}">${'—'.repeat((u.level||1)-1)} ${u.name}</option>`;
+  });
+}
+
+async function selectUnit(unitId) {
+  selectedUnitId = unitId;
+  renderTree();
+  const contentDoc = await db.collection('users').doc(currentUser.uid).collection('contents').doc(unitId).get();
+  if (contentDoc.exists) {
+    document.getElementById('editArea').innerHTML = contentDoc.data().html || '<p>내용을 입력하세요...</p>';
+  } else {
+    document.getElementById('editArea').innerHTML = '<p>내용을 입력하세요...</p>';
+  }
+}
+
+function addUnit() {
+  document.getElementById('unitModal').classList.add('show');
+}
+function closeUnitModal() {
+  document.getElementById('unitModal').classList.remove('show');
+}
+
+async function saveUnit() {
+  const name = document.getElementById('unitName').value.trim();
+  const level = parseInt(document.getElementById('unitLevel').value);
+  const parent = document.getElementById('unitParent').value;
+  if (!name) return;
+  
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('units').add({
+      name, level, parent: parent || null, order: units.length, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeUnitModal();
+    document.getElementById('unitName').value = '';
+    loadTeacherUnits();
+  } catch(e) { console.error(e); }
+}
+
+function filterTree(query) {
+  const items = document.querySelectorAll('.tree-item');
+  items.forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ============================================================
+// TEACHER: EDITOR
+// ============================================================
+function switchEditorTab(tab) {
+  document.querySelectorAll('.editor-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('editTabContent').style.display = tab === 'edit' ? '' : 'none';
+  document.getElementById('previewTabContent').style.display = tab === 'preview' ? '' : 'none';
+  document.getElementById('settingsTabContent').style.display = tab === 'settings' ? '' : 'none';
+  if (tab === 'preview') renderPreview();
+}
+
+function execCmd(cmd, val) {
+  document.execCommand(cmd, false, val || null);
+  document.getElementById('editArea').focus();
+}
+
+async function saveContent() {
+  if (!selectedUnitId) return showAlert('단원을 먼저 선택하세요.', 'error');
+  showLoading(true);
+  try {
+    const html = document.getElementById('editArea').innerHTML;
+    await db.collection('users').doc(currentUser.uid).collection('contents').doc(selectedUnitId).set({
+      html, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    showLoading(false);
+  } catch(e) {
+    console.error(e);
+    showLoading(false);
+  }
+}
+
+function openPreview() {
+  switchEditorTab('preview');
+}
+
+function renderPreview() {
+  const html = document.getElementById('editArea').innerHTML;
+  const area = document.getElementById('previewArea');
+  area.innerHTML = `<div class="content-legend">
+    <div class="legend-item"><div class="legend-dot legend-media"></div>미디어 링크</div>
+    <div class="legend-item"><div class="legend-dot legend-quiz"></div>퀴즈 링크</div>
+  </div><div class="content-text">${html}</div>`;
+}
+
+// ============================================================
+// TEACHER: MEDIA LINK INSERT
+// ============================================================
+function openMediaModal() {
+  document.getElementById('mediaModal').classList.add('show');
+  document.getElementById('mediaDisplayText').value = '';
+  document.getElementById('mediaDriveLink').value = '';
+  document.getElementById('linkPreview').classList.remove('show');
+}
+function closeMediaModal() {
+  document.getElementById('mediaModal').classList.remove('show');
+}
+
+function selectMediaType(btn, type) {
+  selectedMediaType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  previewDriveLink();
+}
+
+function previewDriveLink() {
+  const url = document.getElementById('mediaDriveLink').value.trim();
+  const preview = document.getElementById('linkPreview');
+  if (url && extractFileId(url)) {
+    const directUrl = getDirectUrl(url, selectedMediaType);
+    document.getElementById('convertedLink').textContent = directUrl;
+    preview.classList.add('show');
+  } else {
+    preview.classList.remove('show');
+  }
+}
+
+function insertMediaLink() {
+  const text = document.getElementById('mediaDisplayText').value.trim();
+  const url = document.getElementById('mediaDriveLink').value.trim();
+  if (!text || !url) return;
+  
+  const directUrl = getDirectUrl(url, selectedMediaType);
+  const linkHtml = `<a class="media-link" data-type="${selectedMediaType}" data-url="${directUrl}" data-original="${url}" onclick="return false;">[${text}]</a>`;
+  
+  document.getElementById('editArea').focus();
+  document.execCommand('insertHTML', false, linkHtml + ' ');
+  closeMediaModal();
+}
+
+// ============================================================
+// TEACHER: QUIZ INSERT
+// ============================================================
+function openQuizModal() {
+  document.getElementById('quizModal').classList.add('show');
+}
+function closeQuizModal() {
+  document.getElementById('quizModal').classList.remove('show');
+}
+
+function insertQuiz() {
+  const question = document.getElementById('quizQuestion').value.trim();
+  const context = document.getElementById('quizContext').value.trim();
+  const points = document.getElementById('quizPoints').value;
+  const retries = document.getElementById('quizRetries').value;
+  const optInputs = document.querySelectorAll('#quizOptions input[type="text"], #quizOptions input.form-input');
+  const correctIdx = document.querySelector('input[name="correctOpt"]:checked').value;
+  
+  if (!question) return;
+  
+  const options = [];
+  document.querySelectorAll('#quizOptions .form-input').forEach(inp => {
+    if (inp.value.trim()) options.push(inp.value.trim());
+  });
+  
+  const quizId = 'quiz_' + Date.now();
+  const quizData = JSON.stringify({ id: quizId, question, context, options, correct: parseInt(correctIdx), points: parseInt(points), retries: parseInt(retries) });
+  
+  const quizHtml = `<span class="quiz-link" data-quiz='${quizData}' onclick="return false;">Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}</span>`;
+  
+  document.getElementById('editArea').focus();
+  document.execCommand('insertHTML', false, quizHtml + ' ');
+  closeQuizModal();
+  
+  // Clear form
+  document.getElementById('quizQuestion').value = '';
+  document.getElementById('quizContext').value = '';
+  document.querySelectorAll('#quizOptions .form-input').forEach(inp => inp.value = '');
+}
+
+// ============================================================
+// TEACHER: SETTINGS
+// ============================================================
+async function saveSettings() {
+  showLoading(true);
+  try {
+    await db.collection('users').doc(currentUser.uid).update({
+      aiPrompt: document.getElementById('aiPrompt').value,
+      apiKey: document.getElementById('apiKeyInput').value,
+      passRate: parseInt(document.getElementById('passRate').value) || 80
+    });
+  } catch(e) { console.error(e); }
+  showLoading(false);
+}
+
+async function loadSettings() {
+  const doc = await db.collection('users').doc(currentUser.uid).get();
+  if (doc.exists) {
+    const d = doc.data();
+    if (d.aiPrompt) document.getElementById('aiPrompt').value = d.aiPrompt;
+    if (d.apiKey) document.getElementById('apiKeyInput').value = d.apiKey;
+    if (d.passRate) document.getElementById('passRate').value = d.passRate;
+  }
+}
+
+// ============================================================
+// STUDENT: LOAD TEACHERS
+// ============================================================
+async function loadTeacherList() {
+  const snap = await db.collection('users').where('role', '==', 'teacher').get();
+  const sel = document.getElementById('teacherSelect');
+  sel.innerHTML = '<option value="">선생님 선택...</option>';
+  snap.forEach(doc => {
+    const d = doc.data();
+    sel.innerHTML += `<option value="${doc.id}">${d.name} 선생님</option>`;
+  });
+}
+
+async function loadTeacherContent() {
+  const teacherId = document.getElementById('teacherSelect').value;
+  if (!teacherId) return;
+  currentTeacherId = teacherId;
+  showLoading(true);
+  
+  try {
+    // Load units
+    const unitSnap = await db.collection('users').doc(teacherId).collection('units').orderBy('order').get();
+    units = [];
+    unitSnap.forEach(doc => units.push({ id: doc.id, ...doc.data() }));
+    
+    // Load all contents
+    contents = {};
+    const contentSnap = await db.collection('users').doc(teacherId).collection('contents').get();
+    contentSnap.forEach(doc => contents[doc.id] = doc.data());
+    
+    renderUnitNav();
+    if (units.length > 0) loadStudentUnit(units[0].id);
+  } catch(e) { console.error(e); }
+  showLoading(false);
+}
+
+function renderUnitNav() {
+  const nav = document.getElementById('unitNav');
+  nav.innerHTML = '';
+  units.filter(u => (u.level || 1) === 1).forEach((u, i) => {
+    const div = document.createElement('div');
+    div.className = 'unit-nav-item' + (i === 0 ? ' active' : '');
+    div.textContent = u.name;
+    div.dataset.unitId = u.id;
+    div.onclick = () => {
+      nav.querySelectorAll('.unit-nav-item').forEach(n => n.classList.remove('active'));
+      div.classList.add('active');
+      loadStudentUnit(u.id);
+    };
+    nav.appendChild(div);
+  });
+}
+
+function loadStudentUnit(unitId) {
+  selectedUnitId = unitId;
+  const content = contents[unitId];
+  const area = document.getElementById('studentContent');
+  
+  if (content && content.html) {
+    area.innerHTML = content.html;
+    // Bind media links
+    area.querySelectorAll('.media-link').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        const type = link.dataset.type || 'image';
+        const url = link.dataset.url;
+        const text = link.textContent;
+        showMediaInMidPanel(type, url, text);
+      };
+    });
+    // Bind quiz links
+    area.querySelectorAll('.quiz-link').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        try {
+          const quizData = JSON.parse(link.dataset.quiz);
+          showQuizInMidPanel(quizData);
+        } catch(err) { console.error(err); }
+      };
+    });
+  } else {
+    area.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">이 단원에는 아직 내용이 없습니다.</p>';
+  }
+  
+  // Reset mid panel
+  switchMidView('idle');
+}
+
+// ============================================================
+// STUDENT: MID PANEL (Quiz / Media toggle)
+// ============================================================
+function switchMidView(view) {
+  document.querySelectorAll('.mid-view').forEach(v => v.classList.remove('active'));
+  document.getElementById(view + 'View').classList.add('active');
+  
+  const dot = document.getElementById('midIndDot');
+  const label = document.getElementById('midPanelLabel');
+  const actions = document.getElementById('midPanelActions');
+  
+  if (view === 'idle') {
+    dot.className = 'ind-dot ind-idle';
+    label.textContent = '교재에서 링크를 클릭하세요';
+    actions.innerHTML = '';
+  } else if (view === 'quiz') {
+    dot.className = 'ind-dot ind-quiz';
+    label.textContent = '퀴즈';
+    label.style.color = 'var(--amber-600)';
+    actions.innerHTML = '<button class="btn-xs red" onclick="switchMidView(\'idle\')">✕ 닫기</button>';
+  } else if (view === 'media') {
+    dot.className = 'ind-dot ind-media';
+    label.textContent = '미디어';
+    label.style.color = 'var(--lav-600)';
+    actions.innerHTML = '<button class="btn-xs red" onclick="switchMidView(\'idle\')">✕ 닫기</button>';
+  }
+}
+
+function showMediaInMidPanel(type, url, title) {
+  const container = document.getElementById('mediaView');
+  let mediaHtml = '';
+  
+  if (type === 'image' || type === 'gif') {
+    mediaHtml = `
+      <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
+      <div class="media-container">
+        <img src="${url}" alt="${title}" onerror="this.parentElement.innerHTML='<p style=\\'padding:20px;color:var(--text-muted)\\'>이미지를 불러올 수 없습니다. Drive 공유 설정을 확인하세요.</p>'" style="max-width:100%">
+      </div>
+      <div class="media-controls">
+        <button class="btn-xs" onclick="window.open('${url}','_blank')">새 탭에서 열기</button>
+      </div>`;
+  } else if (type === 'video') {
+    mediaHtml = `
+      <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
+      <div class="media-container">
+        <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>`;
+  } else if (type === 'html') {
+    mediaHtml = `
+      <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
+      <div class="media-container">
+        <iframe src="${url}" style="width:100%;height:400px;border:none;border-radius:8px"></iframe>
+      </div>`;
+  }
+  
+  container.innerHTML = mediaHtml;
+  switchMidView('media');
+}
+
+function showQuizInMidPanel(quizData) {
+  const container = document.getElementById('quizView');
+  
+  let optionsHtml = quizData.options.map((opt, i) => `
+    <div class="q-opt" onclick="selectQuizOption(this, ${i}, ${quizData.correct})">
+      <div class="q-radio"><div class="q-check"></div></div>
+      ${opt}
+    </div>
+  `).join('');
+  
+  container.innerHTML = `
+    ${quizData.context ? `<div class="quiz-context">관련 내용: ${quizData.context}</div>` : ''}
+    <div class="q-card">
+      <div class="q-num">배점: ${quizData.points}점 · 재시도: ${quizData.retries}회</div>
+      <div class="q-text">${quizData.question}</div>
+      ${optionsHtml}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button class="btn-xs amber" onclick="requestQuizHint('${quizData.question}')">AI에게 힌트</button>
+      <button class="btn-xs mint" onclick="submitQuizAnswer()">제출</button>
+    </div>
+    <div id="quizResult" style="margin-top:10px"></div>
+  `;
+  switchMidView('quiz');
+}
+
+function selectQuizOption(el, idx, correct) {
+  el.closest('.q-card').querySelectorAll('.q-opt').forEach(o => o.classList.remove('selected', 'wrong'));
+  el.classList.add('selected');
+  el.dataset.selected = idx;
+  el.dataset.correct = correct;
+}
+
+function submitQuizAnswer() {
+  const selected = document.querySelector('.q-opt.selected');
+  if (!selected) return;
+  const idx = parseInt(selected.dataset.selected);
+  const correct = parseInt(selected.dataset.correct);
+  const result = document.getElementById('quizResult');
+  
+  if (idx === correct) {
+    selected.classList.add('selected');
+    result.innerHTML = '<div class="pass-bar success">정답입니다!</div>';
+    // Save score to Firestore
+    if (currentTeacherId && currentUser) {
+      db.collection('users').doc(currentUser.uid).collection('scores').add({
+        teacherId: currentTeacherId, unitId: selectedUnitId,
+        correct: true, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  } else {
+    selected.classList.remove('selected');
+    selected.classList.add('wrong');
+    result.innerHTML = '<div class="pass-bar fail">오답입니다. 교재를 다시 확인하고 재시도하세요.</div>';
+  }
+}
+
+function requestQuizHint(question) {
+  const chatInput = document.getElementById('chatInput');
+  chatInput.value = `이 퀴즈에 대한 힌트를 주세요: "${question}" (직접적인 정답은 알려주지 마세요)`;
+  sendChat();
+}
+
+// ============================================================
+// STUDENT: AI CHAT
+// ============================================================
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  
+  addChatBubble(msg, 'user');
+  input.value = '';
+  chatHistory.push({ role: 'user', content: msg });
+  
+  // Get teacher's API key and prompt
+  if (!currentTeacherId) {
+    addChatBubble('선생님을 먼저 선택해주세요.', 'ai');
+    return;
+  }
+  
+  try {
+    const teacherDoc = await db.collection('users').doc(currentTeacherId).get();
+    const teacherData = teacherDoc.data();
+    const apiKey = teacherData.apiKey;
+    const systemPrompt = teacherData.aiPrompt || '과학 학습을 도와주는 친절한 AI 튜터입니다.';
+    
+    if (!apiKey) {
+      addChatBubble('AI 튜터가 아직 설정되지 않았습니다. 선생님에게 문의하세요.', 'ai');
+      return;
+    }
+    
+    addChatBubble('생각 중...', 'ai', 'thinking');
+    
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...chatHistory.slice(-10)
+    ];
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 1000 })
+    });
+    
+    const data = await response.json();
+    // Remove thinking bubble
+    const thinking = document.getElementById('thinking');
+    if (thinking) thinking.remove();
+    
+    if (data.choices && data.choices[0]) {
+      const reply = data.choices[0].message.content;
+      addChatBubble(reply, 'ai');
+      chatHistory.push({ role: 'assistant', content: reply });
+    } else {
+      addChatBubble('응답을 받지 못했습니다. API Key를 확인하세요.', 'ai');
+    }
+  } catch(e) {
+    const thinking = document.getElementById('thinking');
+    if (thinking) thinking.remove();
+    addChatBubble('AI 연결에 실패했습니다: ' + e.message, 'ai');
+  }
+}
+
+function addChatBubble(text, type, id) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `chat-bubble chat-${type === 'user' ? 'user' : 'ai'}`;
+  if (id) div.id = id;
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function handleChatImage(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    addChatBubble(`[이미지 업로드: ${file.name}]`, 'user');
+    chatHistory.push({ role: 'user', content: `[학생이 이미지를 업로드했습니다: ${file.name}]` });
+  }
+}
+
+// ============================================================
+// STUDENT: RANKING
+// ============================================================
+function showRanking() {
+  document.getElementById('rankingModal').classList.add('show');
+  loadRankingData();
+}
+function closeRanking() {
+  document.getElementById('rankingModal').classList.remove('show');
+}
+
+async function loadRankingData() {
+  const container = document.getElementById('rankingContent');
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  
+  try {
+    // Get all students' scores for current teacher
+    if (!currentTeacherId) {
+      container.innerHTML = '<p style="color:var(--text-muted);text-align:center">선생님을 먼저 선택하세요.</p>';
+      return;
+    }
+    
+    // Simple demo ranking
+    const myScores = await db.collection('users').doc(currentUser.uid).collection('scores')
+      .where('teacherId', '==', currentTeacherId).get();
+    
+    let totalCorrect = 0, totalQuestions = 0;
+    myScores.forEach(doc => {
+      totalQuestions++;
+      if (doc.data().correct) totalCorrect++;
+    });
+    
+    const avgScore = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+    const completedUnits = new Set();
+    myScores.forEach(doc => { if (doc.data().correct) completedUnits.add(doc.data().unitId); });
+    
+    container.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">내 평균 점수</div><div class="stat-val">${avgScore}<span style="font-size:13px;color:var(--text-secondary)">점</span></div></div>
+        <div class="stat-card"><div class="stat-label">완료 단원</div><div class="stat-val">${completedUnits.size}<span style="font-size:13px;color:var(--text-secondary)">/${units.length}</span></div></div>
+        <div class="stat-card"><div class="stat-label">총 퀴즈</div><div class="stat-val">${totalQuestions}<span style="font-size:13px;color:var(--text-secondary)">개</span></div></div>
+        <div class="stat-card"><div class="stat-label">정답률</div><div class="stat-val" style="color:var(--mint-600)">${avgScore}<span style="font-size:13px">%</span></div></div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+        <div style="padding:10px 14px;background:var(--bg-surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:500">단원별 성적</div>
+        <table class="rank-table">
+          <thead><tr><th>단원</th><th>정답</th><th>상태</th></tr></thead>
+          <tbody>
+            ${units.filter(u=>(u.level||1)===1).map(u => {
+              const done = completedUnits.has(u.id);
+              return `<tr><td>${u.name}</td><td>${done ? '통과' : '-'}</td><td><span class="badge-pass ${done ? 'pass' : 'locked'}">${done ? '통과' : '미완료'}</span></td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--text-muted)">데이터를 불러올 수 없습니다.</p>';
+  }
+}
+
+// ============================================================
+// GLOBAL SEARCH
+// ============================================================
+function globalSearch(query) {
+  if (!query.trim()) {
+    if (selectedUnitId) loadStudentUnit(selectedUnitId);
+    return;
+  }
+  const area = document.getElementById('studentContent');
+  const q = query.toLowerCase();
+  // Search across all contents
+  let results = '';
+  Object.keys(contents).forEach(unitId => {
+    const c = contents[unitId];
+    if (c.html && c.html.toLowerCase().includes(q)) {
+      const unit = units.find(u => u.id === unitId);
+      const snippet = c.html.replace(/<[^>]+>/g, '').substring(0, 100);
+      results += `<div style="padding:10px;border:1px solid var(--border);border-radius:var(--radius);margin:6px 0;cursor:pointer" onclick="loadStudentUnit('${unitId}')">
+        <div style="font-size:13px;font-weight:500;color:var(--mint-700)">${unit ? unit.name : '단원'}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${snippet}...</div>
+      </div>`;
+    }
+  });
+  area.innerHTML = results || '<p style="color:var(--text-muted);text-align:center;padding:20px">검색 결과가 없습니다.</p>';
+}
+
+// ============================================================
+// BOOKMARK & MEMO (Simple implementation)
+// ============================================================
+function bookmarkCurrent() {
+  if (!selectedUnitId || !currentUser) return;
+  db.collection('users').doc(currentUser.uid).collection('bookmarks').doc(selectedUnitId).set({
+    unitId: selectedUnitId, teacherId: currentTeacherId,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const btn = event.target;
+  btn.textContent = '북마크됨 ✓';
+  btn.classList.add('mint');
+  setTimeout(() => { btn.textContent = '북마크'; btn.classList.remove('mint'); }, 2000);
+}
+
+function addMemo() {
+  const memo = prompt('메모를 입력하세요:');
+  if (memo && selectedUnitId && currentUser) {
+    db.collection('users').doc(currentUser.uid).collection('memos').add({
+      unitId: selectedUnitId, teacherId: currentTeacherId, text: memo,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+}
+
+// ============================================================
+// RESIZER
+// ============================================================
+function startResize(e, panelId) {
+  e.preventDefault();
+  const panel = document.getElementById(panelId);
+  const startX = e.clientX;
+  const startW = panel.offsetWidth;
+  
+  function onMove(ev) {
+    const diff = ev.clientX - startX;
+    panel.style.flex = 'none';
+    panel.style.width = Math.max(150, startW + diff) + 'px';
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ============================================================
+// AUTH STATE OBSERVER
+// ============================================================
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    const doc = await db.collection('users').doc(user.uid).get();
+    if (doc.exists) {
+      currentUser = { uid: user.uid, ...doc.data() };
+      currentRole = doc.data().role;
+      enterApp();
+    }
+  }
+});
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+});
+</script>
+</body>
+</html>
