@@ -770,8 +770,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 브라우저 탭을 닫으면 로그인 상태 해제 (SESSION 기반)
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+// 페이지를 열 때마다 반드시 로그인 화면부터 시작 (자동 로그인 없음)
+auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
 // ============================================================
 // STATE
@@ -809,7 +809,8 @@ function getDirectUrl(shareUrl, fileType) {
     case 'video':
       return `https://drive.google.com/file/d/${fileId}/preview`;
     case 'html':
-      // HTML은 Google Sites viewer로 실행
+      // HTML은 Google Apps Script 웹앱 프록시 또는 직접 링크로 실행
+      // lh3 방식은 차단되므로 새 탭에서 직접 열기를 권장
       return `https://drive.google.com/uc?id=${fileId}&export=view`;
     default:
       return `https://drive.google.com/uc?export=view&id=${fileId}`;
@@ -875,13 +876,14 @@ async function handleLogin() {
   
   showLoading(true);
   try {
+    // 로그인 정보가 저장되지 않도록 보장
+    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
     const email = `${id}@scistudy.app`;
     const cred = await auth.signInWithEmailAndPassword(email, pw);
     const doc = await db.collection('users').doc(cred.user.uid).get();
     if (doc.exists) {
       const data = doc.data();
       if (data.role !== loginRole) {
-        // 역할이 다르면 즉시 로그아웃
         await auth.signOut();
         showAlert(`이 계정은 ${data.role === 'student' ? '학생' : '선생님'} 계정입니다. "${data.role === 'student' ? '학생' : '선생님'}" 탭을 선택하고 로그인하세요.`, 'error');
         showLoading(false);
@@ -915,6 +917,7 @@ async function handleSignup() {
 
   showLoading(true);
   try {
+    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
     const fakeEmail = `${id}@scistudy.app`;
     const cred = await auth.createUserWithEmailAndPassword(fakeEmail, pw);
     const userData = {
@@ -1209,7 +1212,10 @@ function renderPreview() {
       } else if (type === 'video') {
         midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container"><iframe src="' + url + '" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe></div>';
       } else if (type === 'html') {
-        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + url + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style="width:100%;height:450px;border:none;border-radius:8px"></iframe></div>';
+        var fileId = extractFileId(url);
+        var viewUrl = fileId ? 'https://drive.google.com/file/d/' + fileId + '/preview' : url;
+        var directUrl2 = fileId ? 'https://drive.google.com/uc?id=' + fileId + '&export=view' : url;
+        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + viewUrl + '" style="width:100%;height:400px;border:none;border-radius:8px"></iframe></div><div style="margin-top:8px"><button class="btn-xs mint" onclick="window.open(\'' + directUrl2 + '\',\'_blank\')">새 탭에서 실행하기</button></div>';
       }
     };
   });
@@ -1446,6 +1452,7 @@ async function loadTeacherContent() {
     const unitSnap = await db.collection('users').doc(teacherId).collection('units').orderBy('order').get();
     units = [];
     unitSnap.forEach(doc => units.push({ id: doc.id, ...doc.data() }));
+    sortUnitsHierarchy();
     
     // Load all contents
     contents = {};
@@ -1568,14 +1575,22 @@ function showMediaInMidPanel(type, url, title) {
         <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe>
       </div>`;
   } else if (type === 'html') {
-    // HTML 시뮬레이션: 직접 실행 가능한 URL로 iframe 표시
+    // Google Drive HTML은 iframe에서 제한될 수 있으므로 안내 포함
+    const fileId = extractFileId(url);
+    const viewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+    const directUrl = fileId ? `https://drive.google.com/uc?id=${fileId}&export=view` : url;
     mediaHtml = `
       <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
-      <div class="media-container" style="background:var(--bg-card)">
-        <iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style="width:100%;height:450px;border:none;border-radius:8px"></iframe>
+      <div class="media-container" style="background:var(--bg-card);position:relative">
+        <iframe src="${viewUrl}" style="width:100%;height:450px;border:none;border-radius:8px" id="htmlFrame"></iframe>
       </div>
-      <div class="media-controls">
-        <button class="btn-xs" onclick="window.open('${url}','_blank')">새 탭에서 열기</button>
+      <div class="media-controls" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-xs mint" onclick="window.open('${directUrl}','_blank')">새 탭에서 실행하기</button>
+        <button class="btn-xs" onclick="document.getElementById('htmlFrame').src='${directUrl}'">직접 실행 시도</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.6">
+        HTML 시뮬레이션이 표시되지 않으면 <b>"새 탭에서 실행하기"</b> 버튼을 클릭하세요.<br>
+        또는 HTML 파일을 GitHub Pages에 올리고 그 URL을 링크하면 가장 안정적입니다.
       </div>`;
   }
   
@@ -1860,14 +1875,14 @@ function startResize(e, panelId) {
 // ============================================================
 // AUTH STATE OBSERVER
 // ============================================================
+// 자동 로그인 하지 않음 — 항상 로그인 화면부터 시작
 auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    const doc = await db.collection('users').doc(user.uid).get();
-    if (doc.exists) {
-      currentUser = { uid: user.uid, ...doc.data() };
-      currentRole = doc.data().role;
-      enterApp();
-    }
+  // NONE 모드이므로 페이지 로드 시 user는 항상 null
+  // handleLogin()에서 직접 로그인 처리함
+  if (!user) {
+    document.getElementById('loginPage').style.display = '';
+    document.getElementById('teacherApp').classList.remove('visible');
+    document.getElementById('studentApp').classList.remove('visible');
   }
 });
 
