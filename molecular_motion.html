@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>분자 운동 시뮬레이션</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060a0f;
+  --surface:  #0d1420;
+  --surface2: #131d2e;
+  --surface3: #1a2640;
+  --border:   #1e3050;
+  --text:     #d8e8f8;
+  --muted:    #5a7a9a;
+  --accent:   #00d4ff;
+  --solid-c:  #7eb8ff;
+  --liquid-c: #38cfb5;
+  --gas-c:    #ff8c42;
+  --rad:      10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Noto Sans KR',sans-serif;
+  min-height:100vh;
+  padding:20px 16px 40px;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 20% 10%,rgba(0,100,200,.07) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 80%,rgba(0,212,255,.05) 0%,transparent 60%);
+}
+header{text-align:center;margin-bottom:28px;}
+header h1{
+  font-size:1.85rem;font-weight:900;letter-spacing:-1px;line-height:1.15;
+  background:linear-gradient(120deg,var(--solid-c),var(--accent),var(--liquid-c),var(--gas-c));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+header p{color:var(--muted);font-size:.88rem;margin-top:6px;}
+
+.layout{
+  display:grid;grid-template-columns:280px 1fr;gap:16px;
+  max-width:1160px;margin:0 auto;
+}
+@media(max-width:860px){.layout{grid-template-columns:1fr;}}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:18px;}
+.panel-title{
+  font-size:.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.panel-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;flex-shrink:0;}
+
+.field{margin-bottom:14px;}
+.field-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:7px;}
+.field-label .val{font-family:'Space Mono',monospace;color:var(--accent);font-size:.8rem;}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:8px 10px;border-radius:8px;
+  font-size:.83rem;font-family:'Noto Sans KR',sans-serif;cursor:pointer;outline:none;
+}
+select:focus{border-color:var(--accent);}
+
+.phase-row{display:flex;gap:8px;margin:14px 0;}
+.phase-badge{
+  flex:1;padding:9px 4px;border-radius:8px;border:1.5px solid var(--border);
+  text-align:center;font-size:.75rem;font-weight:700;letter-spacing:1px;
+  color:var(--muted);transition:all .25s;cursor:default;
+}
+.phase-badge.solid.active {background:rgba(126,184,255,.15);border-color:var(--solid-c);color:var(--solid-c);}
+.phase-badge.liquid.active{background:rgba(56,207,181,.15); border-color:var(--liquid-c);color:var(--liquid-c);}
+.phase-badge.gas.active   {background:rgba(255,140,66,.15);  border-color:var(--gas-c);  color:var(--gas-c);}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;}
+.stat-label{font-size:.68rem;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
+.stat-val{font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;}
+
+.btn-row{display:flex;gap:8px;margin-top:14px;}
+.btn{
+  flex:1;padding:9px 4px;border-radius:8px;border:none;
+  font-size:.82rem;font-weight:700;cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif;transition:opacity .15s,transform .1s;
+}
+.btn:hover{opacity:.88;transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:linear-gradient(135deg,#0090cc,var(--accent));color:#000;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--muted);color:var(--text);}
+
+.right-col{display:flex;flex-direction:column;gap:16px;}
+
+.sim-wrap{position:relative;background:var(--surface2);border-radius:var(--rad);overflow:hidden;border:1px solid var(--border);}
+#simCanvas{display:block;width:100%;height:300px;}
+.sim-overlay{
+  position:absolute;top:10px;left:12px;
+  font-family:'Space Mono',monospace;font-size:.7rem;
+  color:rgba(216,232,248,.4);pointer-events:none;line-height:1.8;
+}
+.temp-meter{
+  position:absolute;top:10px;right:12px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;
+}
+.temp-bar-bg{
+  width:12px;height:110px;background:var(--surface3);border-radius:6px;overflow:hidden;
+  border:1px solid var(--border);display:flex;flex-direction:column;justify-content:flex-end;
+}
+.temp-bar-fill{width:100%;border-radius:6px;transition:height .4s ease,background .4s ease;}
+.temp-label{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.charts-grid{grid-template-columns:1fr;}}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:16px;}
+.chart-subtitle{font-size:.7rem;color:var(--muted);text-align:center;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+
+.transition-box{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;font-size:.79rem;line-height:1.8;color:var(--muted);margin-top:10px;
+}
+.transition-box strong{color:var(--text);}
+.transition-box .hl{color:var(--accent);font-family:'Space Mono',monospace;}
+
+.legend-row{display:flex;gap:16px;justify-content:center;padding:10px 18px 14px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚛ 분자 운동 시뮬레이션</h1>
+  <p>온도 변화에 따른 고체 · 액체 · 기체 분자의 운동을 실시간으로 관찰합니다</p>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left ── -->
+  <div class="panel" style="align-self:start">
+    <div class="panel-title">실험 조건 설정</div>
+
+    <div class="field">
+      <div class="field-label">물질 종류 <span class="val" id="mat_name">물 (H₂O)</span></div>
+      <select id="material">
+        <option value="water">물 (H₂O)</option>
+        <option value="ethanol">에탄올 (C₂H₅OH)</option>
+        <option value="iron">철 (Fe)</option>
+        <option value="nitrogen">질소 (N₂)</option>
+        <option value="co2">이산화탄소 (CO₂)</option>
+        <option value="mercury">수은 (Hg)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <div class="field-label">온도 <span class="val" id="temp_val">25 °C</span></div>
+      <input type="range" id="temperature" min="-200" max="500" value="25" step="1">
+    </div>
+
+    <div class="field">
+      <div class="field-label">압력 <span class="val" id="pres_val">1.0 atm</span></div>
+      <input type="range" id="pressure" min="0.1" max="10" value="1" step="0.1">
+    </div>
+
+    <div class="field">
+      <div class="field-label">분자 수 <span class="val" id="count_val">60개</span></div>
+      <input type="range" id="mol_count" min="20" max="120" value="60" step="5">
+    </div>
+
+    <div class="field-label" style="margin-top:12px">현재 상태</div>
+    <div class="phase-row">
+      <div class="phase-badge solid"  id="badge_solid">고체</div>
+      <div class="phase-badge liquid" id="badge_liquid">액체</div>
+      <div class="phase-badge gas"    id="badge_gas">기체</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">평균 속도</div>
+        <div class="stat-val" id="stat_speed" style="color:var(--accent)">—</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">m/s</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">운동 에너지</div>
+        <div class="stat-val" id="stat_ke" style="color:var(--gas-c)">—</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">×10⁻²¹ J</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">분자간 거리</div>
+        <div class="stat-val" id="stat_dist" style="color:var(--liquid-c);font-size:.82rem">—</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">상대값</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">충돌 빈도</div>
+        <div class="stat-val" id="stat_coll" style="color:var(--solid-c)">—</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">회/초</div>
+      </div>
+    </div>
+
+    <div class="transition-box" id="phase_info">상태 정보가 표시됩니다.</div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">⏸ 일시정지</button>
+      <button class="btn btn-ghost"   onclick="resetSim()">↺ 초기화</button>
+    </div>
+  </div>
+
+  <!-- ── Right ── -->
+  <div class="right-col">
+
+    <div class="panel" style="padding:0;overflow:hidden;position:relative">
+      <div class="panel-title" style="padding:14px 18px 0;margin-bottom:0;border-bottom:none">분자 운동 시뮬레이션</div>
+      <div class="sim-wrap">
+        <canvas id="simCanvas"></canvas>
+        <div class="sim-overlay" id="sim_overlay"></div>
+        <div class="temp-meter">
+          <div class="temp-bar-bg">
+            <div class="temp-bar-fill" id="temp_fill" style="height:30%;background:#38cfb5"></div>
+          </div>
+          <div class="temp-label" id="temp_fill_label">25°C</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--solid-c)"></div>고체 분자</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--liquid-c)"></div>액체 분자</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--gas-c)"></div>기체 분자</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-wrap">
+        <div class="chart-subtitle">온도 vs 평균 분자 속도 (RMS)</div>
+        <canvas id="chart_speed" height="180"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-subtitle">맥스웰-볼츠만 속도 분포</div>
+        <canvas id="chart_mb" height="180"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-subtitle">상평형 다이어그램 (P–T)</div>
+        <canvas id="chart_phase" height="180"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-subtitle">온도 vs 평균 운동 에너지</div>
+        <canvas id="chart_ke" height="180"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  MATERIALS
+// ═══════════════════════════════════════════════════════
+const MATERIALS = {
+  water:   { name:'물 (H₂O)',         mw:18,  melt:0,    boil:100  },
+  ethanol: { name:'에탄올 (C₂H₅OH)', mw:46,  melt:-114, boil:78   },
+  iron:    { name:'철 (Fe)',           mw:56,  melt:1538, boil:2862 },
+  nitrogen:{ name:'질소 (N₂)',        mw:28,  melt:-210, boil:-196 },
+  co2:     { name:'이산화탄소 (CO₂)', mw:44,  melt:-78,  boil:-57  },
+  mercury: { name:'수은 (Hg)',         mw:200, melt:-39,  boil:357  },
+};
+
+// ═══════════════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════════════
+
+/** 물리 RMS 속도 (m/s) */
+function rmsSpeed(tc, mw) {
+  const T = Math.max(1, tc + 273.15);
+  return Math.sqrt(3 * 8.314 * T / (mw * 1e-3));
+}
+
+/**
+ * 시각적 파티클 목표 속도 (px/frame)
+ * 교육용 과장: T에 선형 비례 (실제는 sqrt(T))
+ * → 온도 차이를 훨씬 극적으로 체감
+ * 기준: 25°C(298K) → 1.5 px/frame
+ */
+function targetSpeed(tc) {
+  const T    = Math.max(1, tc + 273.15);
+  const Tref = 298.15; // 25°C
+  return 1.5 * (T / Tref);
+}
+
+function getPhase(mat, tc) {
+  const m = MATERIALS[mat];
+  if (tc < m.melt) return 'solid';
+  if (tc < m.boil) return 'liquid';
+  return 'gas';
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let curMat   = 'water';
+let tempC    = 25;
+let pressure = 1.0;
+let molCount = 60;
+let phase    = 'liquid';
+let playing  = true;
+let particles = [];
+let collisionCount = 0;
+let collisionTimer = 0;
+let collisionRate  = 0;
+let frameCount = 0;
+
+const canvas = document.getElementById('simCanvas');
+const ctx    = canvas.getContext('2d');
+let W = 0, H = 0;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width;
+  canvas.height = 300;
+  W = canvas.width;
+  H = canvas.height;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════════
+function makeColor(phase) {
+  const base = phase === 'solid'  ? [126, 184, 255]
+             : phase === 'liquid' ? [56,  207, 181]
+             :                      [255, 140,  66];
+  const v = () => Math.floor((Math.random() - 0.5) * 40);
+  const r = Math.min(255, Math.max(0, base[0] + v()));
+  const g = Math.min(255, Math.max(0, base[1] + v()));
+  const b = Math.min(255, Math.max(0, base[2] + v()));
+  return `rgb(${r},${g},${b})`;
+}
+
+function initParticles() {
+  particles = [];
+  phase = getPhase(curMat, tempC);
+  const spd   = targetSpeed(tempC);
+  const RADIUS = phase === 'gas' ? 5 : phase === 'liquid' ? 6 : 7;
+
+  for (let i = 0; i < molCount; i++) {
+    let x, y, vx, vy, eqX, eqY;
+
+    if (phase === 'solid') {
+      const cols = Math.ceil(Math.sqrt(molCount * 1.2));
+      const rows = Math.ceil(molCount / cols);
+      const sx = (W - (cols - 1) * 22) / 2;
+      const sy = (H - (rows - 1) * 22) / 2;
+      x  = sx + (i % cols) * 22;
+      y  = sy + Math.floor(i / cols) * 22;
+      eqX = x; eqY = y;
+      // 고체 초기 진동 속도: targetSpeed에 비례하되 작게
+      const vibV = spd * 0.08;
+      vx = (Math.random() - 0.5) * vibV * 2;
+      vy = (Math.random() - 0.5) * vibV * 2;
+
+    } else {
+      x  = RADIUS + Math.random() * (W - RADIUS * 2);
+      y  = phase === 'liquid'
+         ? H * 0.2 + Math.random() * (H * 0.7)
+         : RADIUS + Math.random() * (H - RADIUS * 2);
+      eqX = x; eqY = y;
+      const angle  = Math.random() * Math.PI * 2;
+      const factor = 0.7 + Math.random() * 0.6; // MB 분포 모사
+      vx = Math.cos(angle) * spd * factor;
+      vy = Math.sin(angle) * spd * factor;
+    }
+
+    particles.push({ x, y, vx, vy, r: RADIUS, eqX, eqY, color: makeColor(phase) });
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE  ← 핵심 수정
+// ═══════════════════════════════════════════════════════
+const LERP = 0.04; // 온도 변화에 따른 속도 수렴 계수
+
+function updateParticles() {
+  phase = getPhase(curMat, tempC);
+  const spd = targetSpeed(tempC); // 현재 온도의 목표 속도
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+
+    // ── 1. 속도를 목표 속도로 부드럽게 수렴 (LERP) ──────────
+    const curSpd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+
+    if (phase === 'solid') {
+      // 고체: 진동 진폭이 온도에 비례하도록 제어
+      const targetVib = spd * 0.08;
+      const restoreK  = 0.1;
+      const noise     = targetVib * 0.6;
+      p.vx += -restoreK * (p.x - p.eqX) + (Math.random() - 0.5) * noise;
+      p.vy += -restoreK * (p.y - p.eqY) + (Math.random() - 0.5) * noise;
+      // 진폭 제어: 현재 진동 속도가 목표 진동 속도 초과시 감쇠
+      const vibSpd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      const maxVib = targetVib * 4;
+      if (vibSpd > maxVib) { p.vx *= maxVib / vibSpd; p.vy *= maxVib / vibSpd; }
+      p.x += p.vx;
+      p.y += p.vy;
+
+    } else {
+      // 액체/기체: 매 프레임 현재 속도를 목표 속도로 LERP
+      if (curSpd > 0.001) {
+        const desiredSpd = spd * (0.6 + Math.random() * 0.8); // MB 분포 효과
+        const newSpd     = curSpd + (desiredSpd - curSpd) * LERP;
+        p.vx *= newSpd / curSpd;
+        p.vy *= newSpd / curSpd;
+      } else {
+        // 정지된 파티클 재시작
+        const angle = Math.random() * Math.PI * 2;
+        p.vx = Math.cos(angle) * spd;
+        p.vy = Math.sin(angle) * spd;
+      }
+
+      // ── 2. 위상 별 추가 물리 ──────────────────────────────
+      if (phase === 'liquid') {
+        p.vy += 0.015; // 약한 중력
+        // 속도 상한
+        const s = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+        const maxS = spd * 3;
+        if (s > maxS) { p.vx *= maxS/s; p.vy *= maxS/s; }
+      }
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // ── 3. 벽 반사 ───────────────────────────────────────
+      const yTop = phase === 'liquid' ? H * 0.1 : p.r;
+      if (p.x < p.r)   { p.x = p.r;   p.vx =  Math.abs(p.vx); collisionCount++; }
+      if (p.x > W-p.r) { p.x = W-p.r; p.vx = -Math.abs(p.vx); collisionCount++; }
+      if (p.y < yTop)  { p.y = yTop;  p.vy =  Math.abs(p.vy); }
+      if (p.y > H-p.r) { p.y = H-p.r; p.vy = -Math.abs(p.vy); collisionCount++; }
+    }
+  }
+
+  // 기체: 파티클 간 충돌
+  if (phase === 'gas') {
+    for (let i = 0; i < particles.length - 1; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const a = particles[i], b = particles[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d  = Math.sqrt(dx*dx + dy*dy);
+        const md = a.r + b.r;
+        if (d < md && d > 0.001) {
+          const nx = dx/d, ny = dy/d;
+          const dv = (a.vx - b.vx)*nx + (a.vy - b.vy)*ny;
+          if (dv > 0) {
+            a.vx -= dv*nx; a.vy -= dv*ny;
+            b.vx += dv*nx; b.vy += dv*ny;
+            collisionCount++;
+          }
+          const ov = (md - d) * 0.5;
+          a.x -= nx*ov; a.y -= ny*ov;
+          b.x += nx*ov; b.y += ny*ov;
+        }
+      }
+    }
+  }
+
+  // 충돌 빈도 계산 (~60fps 기준)
+  collisionTimer++;
+  if (collisionTimer >= 60) {
+    collisionRate  = collisionCount;
+    collisionCount = 0;
+    collisionTimer = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESCALE VELOCITIES on temp/phase change (즉각 반응)
+// ═══════════════════════════════════════════════════════
+function rescaleVelocities() {
+  const spd = targetSpeed(tempC);
+  for (const p of particles) {
+    if (phase === 'solid') continue; // 고체는 restore force가 제어
+    const cs = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+    if (cs > 0.001) {
+      const ns = spd * (0.7 + Math.random() * 0.6);
+      p.vx *= ns / cs;
+      p.vy *= ns / cs;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW
+// ═══════════════════════════════════════════════════════
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  if      (phase === 'solid')  { grad.addColorStop(0,'#0a1225'); grad.addColorStop(1,'#0d1835'); }
+  else if (phase === 'liquid') { grad.addColorStop(0,'#081825'); grad.addColorStop(1,'#0a2018'); }
+  else                         { grad.addColorStop(0,'#120808'); grad.addColorStop(1,'#1e1008'); }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Liquid surface
+  if (phase === 'liquid') {
+    ctx.fillStyle = 'rgba(56,207,181,0.06)';
+    ctx.fillRect(0, H*0.1, W, H);
+    ctx.strokeStyle = 'rgba(56,207,181,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(0,H*0.1); ctx.lineTo(W,H*0.1); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Solid lattice bonds
+  if (phase === 'solid') {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const a = particles[i], b = particles[j];
+        const dx = b.eqX-a.eqX, dy = b.eqY-a.eqY;
+        const d  = Math.sqrt(dx*dx+dy*dy);
+        if (d < 30) {
+          ctx.strokeStyle = `rgba(126,184,255,${0.13*(1-d/30)})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Liquid cohesion lines
+  if (phase === 'liquid') {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const a = particles[i], b = particles[j];
+        const dx = b.x-a.x, dy = b.y-a.y;
+        const d  = Math.sqrt(dx*dx+dy*dy);
+        if (d < 20) {
+          ctx.strokeStyle = `rgba(56,207,181,${0.09*(1-d/20)})`;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Particles
+  for (const p of particles) {
+    // Glow
+    const grd = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.4);
+    const [rr,gg,bb] = p.color.match(/\d+/g).map(Number);
+    grd.addColorStop(0, `rgba(${rr},${gg},${bb},0.3)`);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r*2.4,0,Math.PI*2); ctx.fill();
+
+    // Core
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+
+    // Shine
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.beginPath(); ctx.arc(p.x-p.r*0.3,p.y-p.r*0.3,p.r*0.36,0,Math.PI*2); ctx.fill();
+  }
+
+  // Velocity arrows (가스 모드에서 속도 방향 표시)
+  if (phase === 'gas' && particles.length <= 60) {
+    for (const p of particles) {
+      const spd = Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+      if (spd < 0.1) continue;
+      const len = Math.min(spd*6, 18);
+      const ex  = p.x + p.vx/spd*len;
+      const ey  = p.y + p.vy/spd*len;
+      ctx.strokeStyle = 'rgba(255,140,66,0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(ex,ey); ctx.stroke();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════════════
+const CHART_OPTS = {
+  responsive:true, animation:false,
+  plugins:{ legend:{ labels:{ color:'#5a7a9a', font:{ family:'Noto Sans KR', size:10 } } } },
+  scales:{
+    x:{ ticks:{ color:'#5a7a9a',font:{size:9},maxTicksLimit:7 }, grid:{ color:'#1a2640' } },
+    y:{ ticks:{ color:'#5a7a9a',font:{size:9} },                  grid:{ color:'#1a2640' } },
+  },
+};
+
+const TEMP_RANGE = [];
+for (let t = -200; t <= 500; t += 10) TEMP_RANGE.push(t);
+
+let chartSpeed, chartMB, chartPhase, chartKE;
+
+function buildSpeedCurve(mat) {
+  return TEMP_RANGE.map(t => {
+    const m = MATERIALS[mat];
+    if (t < m.melt) return null;
+    return +(rmsSpeed(t, m.mw) / 1000).toFixed(3);
+  });
+}
+
+function buildKECurve() {
+  return TEMP_RANGE.map(t => {
+    const T = Math.max(1, t + 273.15);
+    return +(1.5 * 8.314 * T / 6.022e23 * 1e21).toFixed(3);
+  });
+}
+
+function buildMBDist(mat, tc) {
+  const M = MATERIALS[mat].mw * 1e-3;
+  const T = Math.max(1, tc + 273.15);
+  const R = 8.314;
+  const vs = [], fs = [];
+  for (let v = 0; v <= 3000; v += 30) {
+    vs.push(v);
+    const A = Math.pow(M / (2 * Math.PI * R * T), 1.5);
+    fs.push(+(4 * Math.PI * A * v * v * Math.exp(-M*v*v/(2*R*T)) * 1e3).toFixed(6));
+  }
+  return { vs, fs };
+}
+
+function phaseColor(ph) {
+  return ph==='solid'?'#7eb8ff' : ph==='liquid'?'#38cfb5' : '#ff8c42';
+}
+
+function initCharts() {
+  if (chartSpeed) chartSpeed.destroy();
+  if (chartMB)    chartMB.destroy();
+  if (chartPhase) chartPhase.destroy();
+  if (chartKE)    chartKE.destroy();
+
+  const pc = phaseColor(phase);
+  const nearIdx = TEMP_RANGE.reduce((best,t,i)=>Math.abs(t-tempC)<Math.abs(TEMP_RANGE[best]-tempC)?i:best,0);
+
+  // ① Speed vs Temp
+  chartSpeed = new Chart(document.getElementById('chart_speed'),{
+    type:'line',
+    data:{
+      labels:TEMP_RANGE,
+      datasets:[
+        { label:MATERIALS[curMat].name,
+          data:buildSpeedCurve(curMat),
+          borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.07)',
+          tension:0.3, fill:true, pointRadius:0, spanGaps:false },
+        { label:'현재 온도',
+          data:TEMP_RANGE.map((t,i)=>i===nearIdx?buildSpeedCurve(curMat)[nearIdx]:null),
+          borderColor:'#ff6b35', pointBackgroundColor:'#ff6b35',
+          pointRadius:TEMP_RANGE.map((_,i)=>i===nearIdx?6:0),
+          showLine:false, spanGaps:false },
+      ],
+    },
+    options:{...CHART_OPTS, scales:{...CHART_OPTS.scales,
+      x:{...CHART_OPTS.scales.x, title:{display:true,text:'온도 (°C)',color:'#5a7a9a'}},
+      y:{...CHART_OPTS.scales.y, title:{display:true,text:'속도 (km/s)',color:'#5a7a9a'}},
+    }},
+  });
+
+  // ② Maxwell-Boltzmann
+  const mb = buildMBDist(curMat, tempC);
+  chartMB = new Chart(document.getElementById('chart_mb'),{
+    type:'line',
+    data:{
+      labels:mb.vs,
+      datasets:[{
+        label:`${MATERIALS[curMat].name} @ ${tempC}°C`,
+        data:mb.fs,
+        borderColor:pc, backgroundColor:pc.replace('rgb','rgba').replace(')',',0.1)'),
+        tension:0.4, fill:true, pointRadius:0,
+      }],
+    },
+    options:{...CHART_OPTS, scales:{...CHART_OPTS.scales,
+      x:{...CHART_OPTS.scales.x, title:{display:true,text:'속도 (m/s)',color:'#5a7a9a'}},
+      y:{...CHART_OPTS.scales.y, title:{display:true,text:'확률 밀도 (×10⁻³)',color:'#5a7a9a'}},
+    }},
+  });
+
+  // ③ Phase diagram
+  const m = MATERIALS[curMat];
+  const ptL=[]; const ptBoil=[];
+  for (let t = -220; t <= 600; t += 10) {
+    ptL.push(t);
+    const dT = t - m.boil;
+    ptBoil.push(Math.max(0.01, Math.min(15, Math.exp(dT / 40))));
+  }
+  chartPhase = new Chart(document.getElementById('chart_phase'),{
+    type:'line',
+    data:{
+      labels:ptL,
+      datasets:[
+        { label:'기화 곡선', data:ptBoil, borderColor:'#ff8c42', pointRadius:0, tension:0.3, fill:false },
+        { label:'현재 조건',
+          data:ptL.map(t=>Math.abs(t-tempC)<6?pressure:null),
+          borderColor:'#00d4ff', pointBackgroundColor:'#00d4ff',
+          pointRadius:ptL.map(t=>Math.abs(t-tempC)<6?5:0), showLine:false, spanGaps:false },
+      ],
+    },
+    options:{...CHART_OPTS, scales:{...CHART_OPTS.scales,
+      x:{...CHART_OPTS.scales.x, title:{display:true,text:'온도 (°C)',color:'#5a7a9a'},min:-200,max:500},
+      y:{...CHART_OPTS.scales.y, title:{display:true,text:'압력 (atm)',color:'#5a7a9a'},min:0,max:10},
+    }},
+  });
+
+  // ④ KE vs Temp
+  chartKE = new Chart(document.getElementById('chart_ke'),{
+    type:'line',
+    data:{
+      labels:TEMP_RANGE,
+      datasets:[
+        { label:'평균 운동 에너지', data:buildKECurve(),
+          borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,0.07)',
+          tension:0.3, fill:true, pointRadius:0 },
+        { label:'현재 온도',
+          data:TEMP_RANGE.map((t,i)=>i===nearIdx?buildKECurve()[nearIdx]:null),
+          borderColor:'#00d4ff', pointBackgroundColor:'#00d4ff',
+          pointRadius:TEMP_RANGE.map((_,i)=>i===nearIdx?6:0),
+          showLine:false, spanGaps:false },
+      ],
+    },
+    options:{...CHART_OPTS, scales:{...CHART_OPTS.scales,
+      x:{...CHART_OPTS.scales.x, title:{display:true,text:'온도 (°C)',color:'#5a7a9a'}},
+      y:{...CHART_OPTS.scales.y, title:{display:true,text:'E_k (×10⁻²¹ J)',color:'#5a7a9a'}},
+    }},
+  });
+}
+
+function updateChartDots() {
+  if (!chartSpeed || !chartMB || !chartPhase || !chartKE) return;
+  const nearIdx = TEMP_RANGE.reduce((best,t,i)=>Math.abs(t-tempC)<Math.abs(TEMP_RANGE[best]-tempC)?i:best,0);
+  const curve   = buildSpeedCurve(curMat);
+  const keCurve = buildKECurve();
+
+  chartSpeed.data.datasets[1].data = TEMP_RANGE.map((_,i)=>i===nearIdx?curve[nearIdx]:null);
+  chartSpeed.data.datasets[1].pointRadius = TEMP_RANGE.map((_,i)=>i===nearIdx?6:0);
+  chartSpeed.update();
+
+  const mb = buildMBDist(curMat, tempC);
+  const pc = phaseColor(phase);
+  chartMB.data.datasets[0].data  = mb.fs;
+  chartMB.data.datasets[0].label = `${MATERIALS[curMat].name} @ ${tempC}°C`;
+  chartMB.data.datasets[0].borderColor = pc;
+  chartMB.update();
+
+  const ptL=[];
+  for(let t=-220;t<=600;t+=10) ptL.push(t);
+  chartPhase.data.datasets[1].data = ptL.map(t=>Math.abs(t-tempC)<6?pressure:null);
+  chartPhase.data.datasets[1].pointRadius = ptL.map(t=>Math.abs(t-tempC)<6?5:0);
+  chartPhase.update();
+
+  chartKE.data.datasets[1].data = TEMP_RANGE.map((_,i)=>i===nearIdx?keCurve[nearIdx]:null);
+  chartKE.data.datasets[1].pointRadius = TEMP_RANGE.map((_,i)=>i===nearIdx?6:0);
+  chartKE.update();
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════
+function updateUI() {
+  const m = MATERIALS[curMat];
+  ['solid','liquid','gas'].forEach(p => {
+    document.getElementById('badge_'+p).classList.toggle('active', p===phase);
+  });
+
+  const v = rmsSpeed(tempC, m.mw);
+  document.getElementById('stat_speed').textContent = v > 9999 ? (v/1000).toFixed(1)+'k' : Math.round(v);
+  const T  = Math.max(1, tempC+273.15);
+  document.getElementById('stat_ke').textContent    = (1.5*8.314*T/6.022e23*1e21).toFixed(2);
+  document.getElementById('stat_dist').textContent  = phase==='solid'?'< 0.5nm' : phase==='liquid'?'0.5~2nm' : '> 10nm';
+  document.getElementById('stat_coll').textContent  = Math.round(collisionRate);
+
+  const pct = Math.max(2, Math.min(98, ((tempC+200)/700)*100));
+  document.getElementById('temp_fill').style.height     = pct+'%';
+  document.getElementById('temp_fill').style.background = phaseColor(phase);
+  document.getElementById('temp_fill_label').textContent = tempC+'°C';
+
+  const infoMap = {
+    solid:  `<strong>고체</strong> — 분자들이 격자 구조에 고정,<br>제자리에서 진동만 합니다.<br><span class="hl">T &lt; ${m.melt}°C</span>`,
+    liquid: `<strong>액체</strong> — 분자들이 유동적으로 이동,<br>표면장력과 유동성이 공존합니다.<br><span class="hl">${m.melt}°C ≤ T &lt; ${m.boil}°C</span>`,
+    gas:    `<strong>기체</strong> — 분자들이 고속 자유 비행,<br>벽과의 충돌로 압력을 만듭니다.<br><span class="hl">T ≥ ${m.boil}°C</span>`,
+  };
+  document.getElementById('phase_info').innerHTML = infoMap[phase];
+  document.getElementById('sim_overlay').innerHTML = `${m.name} | ${tempC}°C | ${pressure.toFixed(1)} atm | ${molCount}개`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════════════════
+let prevPhase = '';
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (!playing) return;
+
+  const newPhase = getPhase(curMat, tempC);
+  if (newPhase !== prevPhase) {
+    prevPhase = newPhase;
+    phase     = newPhase;
+    initParticles();
+    updateUI();
+  }
+
+  updateParticles();
+  draw();
+
+  frameCount++;
+  if (frameCount % 4  === 0) updateUI();
+  if (frameCount % 90 === 0) updateChartDots();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════
+document.getElementById('temperature').addEventListener('input', e => {
+  tempC = parseInt(e.target.value);
+  document.getElementById('temp_val').textContent = tempC + ' °C';
+  const newPhase = getPhase(curMat, tempC);
+  if (newPhase !== phase) {
+    phase = newPhase; prevPhase = newPhase;
+    initParticles();
+  } else {
+    // 같은 상: 속도만 즉각 스케일 조정
+    rescaleVelocities();
+  }
+  updateUI();
+  updateChartDots();
+});
+
+document.getElementById('pressure').addEventListener('input', e => {
+  pressure = parseFloat(e.target.value);
+  document.getElementById('pres_val').textContent = pressure.toFixed(1) + ' atm';
+  updateChartDots();
+});
+
+document.getElementById('mol_count').addEventListener('input', e => {
+  molCount = parseInt(e.target.value);
+  document.getElementById('count_val').textContent = molCount + '개';
+  initParticles();
+});
+
+document.getElementById('material').addEventListener('change', e => {
+  curMat = e.target.value;
+  document.getElementById('mat_name').textContent = MATERIALS[curMat].name;
+  prevPhase = '';
+  initParticles();
+  initCharts();
+  updateUI();
+});
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('playBtn').textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+}
+
+function resetSim() {
+  tempC=25; pressure=1.0; molCount=60; curMat='water'; playing=true;
+  document.getElementById('temperature').value = 25;
+  document.getElementById('pressure').value    = 1.0;
+  document.getElementById('mol_count').value   = 60;
+  document.getElementById('material').value    = 'water';
+  document.getElementById('temp_val').textContent  = '25 °C';
+  document.getElementById('pres_val').textContent  = '1.0 atm';
+  document.getElementById('count_val').textContent = '60개';
+  document.getElementById('mat_name').textContent  = MATERIALS.water.name;
+  document.getElementById('playBtn').textContent   = '⏸일시정지';
+  prevPhase='';
+  initParticles(); initCharts(); updateUI();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
+resizeCanvas();
+phase = getPhase(curMat, tempC);
+prevPhase = phase;
+initParticles();
+initCharts();
+updateUI();
+loop();
+</script>
+</body>
+</html>

@@ -876,27 +876,39 @@ async function handleLogin() {
   
   showLoading(true);
   try {
-    // 로그인 정보가 저장되지 않도록 보장
     await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
     const email = `${id}@scistudy.app`;
     const cred = await auth.signInWithEmailAndPassword(email, pw);
-    const doc = await db.collection('users').doc(cred.user.uid).get();
-    if (doc.exists) {
-      const data = doc.data();
-      if (data.role !== loginRole) {
-        await auth.signOut();
-        showAlert(`이 계정은 ${data.role === 'student' ? '학생' : '선생님'} 계정입니다. "${data.role === 'student' ? '학생' : '선생님'}" 탭을 선택하고 로그인하세요.`, 'error');
-        showLoading(false);
-        return;
-      }
-      currentUser = { uid: cred.user.uid, ...data };
-      currentRole = data.role;
-      enterApp();
-    } else {
+    const userDoc = await db.collection('users').doc(cred.user.uid).get();
+    
+    if (!userDoc.exists) {
       await auth.signOut();
       showAlert('사용자 정보를 찾을 수 없습니다.', 'error');
+      showLoading(false);
+      return;
     }
+    
+    const userData = userDoc.data();
+    const userRole = String(userData.role || '').trim().toLowerCase();
+    const selectedRole = String(loginRole || '').trim().toLowerCase();
+    
+    console.log('로그인 시도:', id, '저장된 역할:', userRole, '선택한 역할:', selectedRole);
+    
+    if (userRole !== selectedRole) {
+      await auth.signOut();
+      currentUser = null;
+      currentRole = 'student';
+      const roleName = userRole === 'student' ? '학생' : '선생님';
+      showAlert(`"${id}"는 ${roleName} 계정입니다. 위에서 "${roleName}" 탭을 선택한 후 로그인하세요.`, 'error');
+      showLoading(false);
+      return;
+    }
+    
+    currentUser = { uid: cred.user.uid, ...userData };
+    currentRole = userRole;
+    enterApp();
   } catch (e) {
+    console.error('로그인 에러:', e);
     showAlert('로그인 실패: 아이디 또는 비밀번호를 확인하세요.', 'error');
   }
   showLoading(false);
@@ -1212,10 +1224,12 @@ function renderPreview() {
       } else if (type === 'video') {
         midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container"><iframe src="' + url + '" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe></div>';
       } else if (type === 'html') {
-        var fileId = extractFileId(url);
-        var viewUrl = fileId ? 'https://drive.google.com/file/d/' + fileId + '/preview' : url;
-        var directUrl2 = fileId ? 'https://drive.google.com/uc?id=' + fileId + '&export=view' : url;
-        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + viewUrl + '" style="width:100%;height:400px;border:none;border-radius:8px"></iframe></div><div style="margin-top:8px"><button class="btn-xs mint" onclick="window.open(\'' + directUrl2 + '\',\'_blank\')">새 탭에서 실행하기</button></div>';
+        var isGDrive = url.includes('drive.google.com');
+        if (isGDrive) {
+          midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div style="padding:20px;text-align:center;background:var(--bg-surface);border-radius:var(--radius);border:1.5px dashed var(--border)"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Google Drive HTML은 직접 실행할 수 없습니다</div><div style="font-size:11px;color:var(--text-muted)">GitHub Pages에 올리면 바로 실행 가능합니다</div></div>';
+        } else {
+          midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + url + '" style="width:100%;height:400px;border:none;border-radius:8px"></iframe></div>';
+        }
       }
     };
   });
@@ -1575,23 +1589,40 @@ function showMediaInMidPanel(type, url, title) {
         <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe>
       </div>`;
   } else if (type === 'html') {
-    // Google Drive HTML은 iframe에서 제한될 수 있으므로 안내 포함
-    const fileId = extractFileId(url);
-    const viewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
-    const directUrl = fileId ? `https://drive.google.com/uc?id=${fileId}&export=view` : url;
-    mediaHtml = `
-      <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
-      <div class="media-container" style="background:var(--bg-card);position:relative">
-        <iframe src="${viewUrl}" style="width:100%;height:450px;border:none;border-radius:8px" id="htmlFrame"></iframe>
-      </div>
-      <div class="media-controls" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-xs mint" onclick="window.open('${directUrl}','_blank')">새 탭에서 실행하기</button>
-        <button class="btn-xs" onclick="document.getElementById('htmlFrame').src='${directUrl}'">직접 실행 시도</button>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.6">
-        HTML 시뮬레이션이 표시되지 않으면 <b>"새 탭에서 실행하기"</b> 버튼을 클릭하세요.<br>
-        또는 HTML 파일을 GitHub Pages에 올리고 그 URL을 링크하면 가장 안정적입니다.
-      </div>`;
+    const isGoogleDrive = url.includes('drive.google.com');
+    
+    if (isGoogleDrive) {
+      // Google Drive는 HTML 실행 불가 — 안내 메시지 표시
+      const fileId = extractFileId(url);
+      const directUrl = fileId ? `https://drive.google.com/file/d/${fileId}/view` : url;
+      mediaHtml = `
+        <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
+        <div style="padding:30px;text-align:center;background:var(--bg-surface);border-radius:var(--radius);border:1.5px dashed var(--border)">
+          <div style="font-size:36px;margin-bottom:12px;color:var(--text-muted)">&#9888;</div>
+          <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:8px">Google Drive의 HTML 파일은 직접 실행할 수 없습니다</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;line-height:1.7">
+            Google 보안 정책으로 인해 Drive에 저장된 HTML은 시뮬레이션으로 실행되지 않습니다.<br>
+            아래 버튼을 클릭하면 새 탭에서 다운로드할 수 있습니다.
+          </div>
+          <button class="btn-xs mint" onclick="window.open('${directUrl}','_blank')" style="padding:8px 20px;font-size:13px">파일 열기 / 다운로드</button>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:14px;line-height:1.7;text-align:left;background:var(--bg-card);padding:10px;border-radius:var(--radius)">
+            <b>시뮬레이션을 바로 보이게 하려면:</b><br>
+            1. HTML 파일을 GitHub 저장소에 업로드<br>
+            2. URL (https://아이디.github.io/scistudy/파일명.html)을 링크로 입력<br>
+            → 이렇게 하면 화면에서 바로 시뮬레이션이 실행됩니다
+          </div>
+        </div>`;
+    } else {
+      // GitHub Pages 등 일반 URL — iframe으로 직접 실행
+      mediaHtml = `
+        <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
+        <div class="media-container" style="background:var(--bg-card)">
+          <iframe src="${url}" style="width:100%;height:450px;border:none;border-radius:8px"></iframe>
+        </div>
+        <div class="media-controls" style="margin-top:8px">
+          <button class="btn-xs" onclick="window.open('${url}','_blank')">새 탭에서 열기</button>
+        </div>`;
+    }
   }
   
   container.innerHTML = mediaHtml;
