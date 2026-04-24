@@ -305,9 +305,28 @@ a{text-decoration:none;color:inherit}
 .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:none;align-items:center;justify-content:center;z-index:300;flex-direction:column;gap:12px}
 .loading-overlay.show{display:flex}
 .loading-text{font-size:13px;color:var(--text-secondary)}
+
+/* ===== TOAST ===== */
+.toast-container{position:fixed;top:20px;right:20px;z-index:400;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn 0.3s ease;display:flex;align-items:center;gap:8px;max-width:320px}
+.toast.success{background:var(--mint-700);color:#fff}
+.toast.error{background:var(--red-400);color:#fff}
+.toast.info{background:var(--lav-600);color:#fff}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(20px)}}
+.toast.hiding{animation:toastOut 0.3s ease forwards}
+
+/* ===== TREE DELETE ===== */
+.tree-item{position:relative}
+.tree-delete{display:none;padding:2px 6px;border-radius:4px;font-size:10px;color:var(--red-400);cursor:pointer;margin-left:auto;flex-shrink:0;transition:all 0.15s}
+.tree-delete:hover{background:var(--red-50);color:var(--red-600)}
+.tree-item:hover .tree-delete{display:block}
 </style>
 </head>
 <body>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
 
 <!-- ===== LOADING OVERLAY ===== -->
 <div class="loading-overlay" id="loadingOverlay">
@@ -751,6 +770,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// 브라우저 탭을 닫으면 로그인 상태 해제 (SESSION 기반)
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
 // ============================================================
 // STATE
 // ============================================================
@@ -942,6 +964,22 @@ function toggleUserMenu(role) {
 }
 
 // ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  toast.innerHTML = `<span>${icons[type] || '✓'}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ============================================================
 // TEACHER: UNIT TREE
 // ============================================================
 async function loadTeacherUnits() {
@@ -949,9 +987,29 @@ async function loadTeacherUnits() {
     const snap = await db.collection('users').doc(currentUser.uid).collection('units').orderBy('order').get();
     units = [];
     snap.forEach(doc => units.push({ id: doc.id, ...doc.data() }));
+    sortUnitsHierarchy();
     renderTree();
-    if (units.length > 0) selectUnit(units[0].id);
+    if (units.length > 0 && !selectedUnitId) selectUnit(units[0].id);
   } catch(e) { console.error('Failed to load units:', e); }
+}
+
+function sortUnitsHierarchy() {
+  const sorted = [];
+  function addChildren(parentId, depth) {
+    const children = units.filter(u => (u.parent || '') === (parentId || ''));
+    children.sort((a, b) => (a.order || 0) - (b.order || 0));
+    children.forEach(child => {
+      sorted.push(child);
+      addChildren(child.id, depth + 1);
+    });
+  }
+  addChildren('', 0);
+  addChildren(null, 0);
+  // 부모가 없는 항목 중 아직 추가 안 된 것 포함
+  units.forEach(u => {
+    if (!sorted.find(s => s.id === u.id)) sorted.push(u);
+  });
+  units = sorted;
 }
 
 function renderTree() {
@@ -960,7 +1018,7 @@ function renderTree() {
   units.forEach(u => {
     const div = document.createElement('div');
     div.className = `tree-item tree-l${u.level || 1}${u.id === selectedUnitId ? ' active' : ''}`;
-    div.innerHTML = `<span class="dot"></span>${u.name}`;
+    div.innerHTML = `<span class="dot"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span><span class="tree-delete" onclick="event.stopPropagation();deleteUnit('${u.id}','${u.name}')">삭제</span>`;
     div.onclick = () => selectUnit(u.id);
     list.appendChild(div);
   });
@@ -997,16 +1055,67 @@ async function saveUnit() {
   const name = document.getElementById('unitName').value.trim();
   const level = parseInt(document.getElementById('unitLevel').value);
   const parent = document.getElementById('unitParent').value;
-  if (!name) return;
+  if (!name) return showToast('단원 이름을 입력하세요.', 'error');
   
+  // 상위 단원 바로 뒤에 삽입되도록 order 계산
+  let newOrder = units.length;
+  if (parent) {
+    const parentIdx = units.findIndex(u => u.id === parent);
+    if (parentIdx !== -1) {
+      // 상위 단원의 마지막 자식 뒤에 삽입
+      let insertIdx = parentIdx + 1;
+      while (insertIdx < units.length && units[insertIdx].parent === parent) {
+        insertIdx++;
+      }
+      newOrder = insertIdx;
+      // 이후 항목들의 order를 밀어냄
+      for (let i = insertIdx; i < units.length; i++) {
+        db.collection('users').doc(currentUser.uid).collection('units').doc(units[i].id).update({ order: i + 1 });
+      }
+    }
+  }
+
   try {
     await db.collection('users').doc(currentUser.uid).collection('units').add({
-      name, level, parent: parent || null, order: units.length, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      name, level, parent: parent || null, order: newOrder, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     closeUnitModal();
     document.getElementById('unitName').value = '';
+    showToast(`"${name}" 단원이 추가되었습니다.`, 'success');
     loadTeacherUnits();
-  } catch(e) { console.error(e); }
+  } catch(e) { 
+    console.error(e);
+    showToast('단원 추가에 실패했습니다.', 'error');
+  }
+}
+
+async function deleteUnit(unitId, unitName) {
+  if (!confirm(`"${unitName}" 단원을 삭제하시겠습니까?\n하위 콘텐츠도 함께 삭제됩니다.`)) return;
+  
+  showLoading(true);
+  try {
+    // 단원 삭제
+    await db.collection('users').doc(currentUser.uid).collection('units').doc(unitId).delete();
+    // 해당 단원의 콘텐츠도 삭제
+    try {
+      await db.collection('users').doc(currentUser.uid).collection('contents').doc(unitId).delete();
+    } catch(e) {}
+    // 하위 단원도 삭제
+    const children = units.filter(u => u.parent === unitId);
+    for (const child of children) {
+      await db.collection('users').doc(currentUser.uid).collection('units').doc(child.id).delete();
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('contents').doc(child.id).delete();
+      } catch(e) {}
+    }
+    if (selectedUnitId === unitId) selectedUnitId = null;
+    showToast(`"${unitName}" 단원이 삭제되었습니다.`, 'success');
+    loadTeacherUnits();
+  } catch(e) {
+    console.error(e);
+    showToast('삭제에 실패했습니다.', 'error');
+  }
+  showLoading(false);
 }
 
 function filterTree(query) {
@@ -1033,7 +1142,7 @@ function execCmd(cmd, val) {
 }
 
 async function saveContent() {
-  if (!selectedUnitId) return showAlert('단원을 먼저 선택하세요.', 'error');
+  if (!selectedUnitId) return showToast('단원을 먼저 선택하세요.', 'error');
   showLoading(true);
   try {
     const html = document.getElementById('editArea').innerHTML;
@@ -1041,9 +1150,11 @@ async function saveContent() {
       html, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     showLoading(false);
+    showToast('저장되었습니다.', 'success');
   } catch(e) {
     console.error(e);
     showLoading(false);
+    showToast('저장에 실패했습니다.', 'error');
   }
 }
 
@@ -1054,16 +1165,134 @@ function openPreview() {
 function renderPreview() {
   const html = document.getElementById('editArea').innerHTML;
   const area = document.getElementById('previewArea');
-  area.innerHTML = `<div class="content-legend">
-    <div class="legend-item"><div class="legend-dot legend-media"></div>미디어 링크</div>
-    <div class="legend-item"><div class="legend-dot legend-quiz"></div>퀴즈 링크</div>
-  </div><div class="content-text">${html}</div>`;
+  area.innerHTML = `
+    <div style="padding:10px 14px;background:var(--lav-50);border-radius:var(--radius);margin-bottom:14px;font-size:12px;color:var(--lav-700);display:flex;align-items:center;gap:8px">
+      <span style="font-weight:500">미리보기 모드</span> — 학생에게 보이는 화면입니다. 링크를 클릭해서 동작을 확인하세요.
+    </div>
+    <div class="content-legend">
+      <div class="legend-item"><div class="legend-dot legend-media"></div>미디어 링크</div>
+      <div class="legend-item"><div class="legend-dot legend-quiz"></div>퀴즈 링크</div>
+    </div>
+    <div class="content-text" id="previewContent">${html}</div>
+    <div style="margin-top:16px;padding:14px;background:var(--bg-surface);border-radius:var(--radius)" id="previewMidArea">
+      <div style="font-size:12px;color:var(--text-muted);text-align:center">위 링크를 클릭하면 여기에 미디어/퀴즈가 표시됩니다</div>
+    </div>`;
+  
+  // 미디어 링크 바인딩
+  area.querySelectorAll('.media-link').forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      const type = link.dataset.type || 'image';
+      const url = link.dataset.url;
+      const title = link.textContent;
+      const midArea = document.getElementById('previewMidArea');
+      if (type === 'image' || type === 'gif') {
+        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container"><img src="' + url + '" style="max-width:100%;border-radius:8px" onerror="this.parentElement.innerHTML=\'이미지를 불러올 수 없습니다.\'"></div>';
+      } else if (type === 'video') {
+        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container"><iframe src="' + url + '" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe></div>';
+      } else if (type === 'html') {
+        const fileId = extractFileId(url);
+        const embedUrl = fileId ? 'https://drive.google.com/file/d/' + fileId + '/preview' : url;
+        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + embedUrl + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" style="width:100%;height:450px;border:none;border-radius:8px"></iframe></div>';
+      }
+    };
+  });
+  // 퀴즈 링크 바인딩
+  area.querySelectorAll('.quiz-link').forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      try {
+        let quizData;
+        if (link.dataset.quizB64) {
+          quizData = JSON.parse(decodeURIComponent(escape(atob(link.dataset.quizB64))));
+        } else if (link.dataset.quiz) {
+          quizData = JSON.parse(link.dataset.quiz);
+        }
+        if (!quizData) return;
+        const midArea = document.getElementById('previewMidArea');
+        let optHtml = quizData.options.map((opt, i) => '<div class="q-opt" style="cursor:default"><div class="q-radio"><div class="q-check"></div></div>' + opt + (i === quizData.correct ? ' <span style="color:var(--mint-600);font-size:11px">(정답)</span>' : '') + '</div>').join('');
+        midArea.innerHTML = (quizData.context ? '<div class="quiz-context">관련 내용: ' + quizData.context + '</div>' : '') + '<div class="q-card"><div class="q-num">배점: ' + quizData.points + '점 · 재시도: ' + quizData.retries + '회</div><div class="q-text">' + quizData.question + '</div>' + optHtml + '</div>';
+      } catch(err) { console.error(err); }
+    };
+  });
+}
+
+// ============================================================
+// CURSOR POSITION SAVE/RESTORE
+// ============================================================
+let savedSelection = null;
+
+function saveSelection() {
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    const editArea = document.getElementById('editArea');
+    if (editArea && editArea.contains(range.commonAncestorContainer)) {
+      savedSelection = range.cloneRange();
+    }
+  }
+}
+
+function restoreSelection() {
+  if (savedSelection) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelection);
+    return true;
+  }
+  return false;
+}
+
+function insertAtCursor(html) {
+  const editArea = document.getElementById('editArea');
+  editArea.focus();
+  if (restoreSelection()) {
+    document.execCommand('insertHTML', false, html);
+  } else {
+    // 저장된 위치가 없으면 에디터 끝에 삽입
+    const sel = window.getSelection();
+    sel.selectAllChildren(editArea);
+    sel.collapseToEnd();
+    document.execCommand('insertHTML', false, html);
+  }
+  // 링크/퀴즈 서식이 이어지지 않도록 커서를 링크 바깥으로 이동
+  setTimeout(() => {
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+      let node = sel.getRangeAt(0).startContainer;
+      while (node && node !== editArea) {
+        if (node.nodeType === 1 && (node.classList.contains('media-link') || node.classList.contains('quiz-link'))) {
+          // 링크 뒤에 빈 span 삽입하고 커서 이동
+          const breaker = document.createElement('span');
+          breaker.innerHTML = '&nbsp;';
+          breaker.style.fontWeight = 'normal';
+          breaker.style.color = 'var(--text)';
+          breaker.style.textDecoration = 'none';
+          breaker.style.background = 'none';
+          breaker.className = '';
+          if (node.nextSibling) {
+            node.parentNode.insertBefore(breaker, node.nextSibling);
+          } else {
+            node.parentNode.appendChild(breaker);
+          }
+          const newRange = document.createRange();
+          newRange.setStartAfter(breaker);
+          newRange.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+          break;
+        }
+        node = node.parentNode;
+      }
+    }
+  }, 10);
 }
 
 // ============================================================
 // TEACHER: MEDIA LINK INSERT
 // ============================================================
 function openMediaModal() {
+  saveSelection();
   document.getElementById('mediaModal').classList.add('show');
   document.getElementById('mediaDisplayText').value = '';
   document.getElementById('mediaDriveLink').value = '';
@@ -1095,20 +1324,21 @@ function previewDriveLink() {
 function insertMediaLink() {
   const text = document.getElementById('mediaDisplayText').value.trim();
   const url = document.getElementById('mediaDriveLink').value.trim();
-  if (!text || !url) return;
+  if (!text || !url) return showToast('표시 텍스트와 링크를 모두 입력하세요.', 'error');
   
   const directUrl = getDirectUrl(url, selectedMediaType);
-  const linkHtml = `<a class="media-link" data-type="${selectedMediaType}" data-url="${directUrl}" data-original="${url}" onclick="return false;">[${text}]</a>`;
+  const linkHtml = `<a class="media-link" data-type="${selectedMediaType}" data-url="${directUrl}" data-original="${url}" onclick="return false;">[${text}]</a>&nbsp;`;
   
-  document.getElementById('editArea').focus();
-  document.execCommand('insertHTML', false, linkHtml + ' ');
   closeMediaModal();
+  insertAtCursor(linkHtml);
+  showToast('미디어 링크가 삽입되었습니다.', 'success');
 }
 
 // ============================================================
 // TEACHER: QUIZ INSERT
 // ============================================================
 function openQuizModal() {
+  saveSelection();
   document.getElementById('quizModal').classList.add('show');
 }
 function closeQuizModal() {
@@ -1131,13 +1361,15 @@ function insertQuiz() {
   });
   
   const quizId = 'quiz_' + Date.now();
-  const quizData = JSON.stringify({ id: quizId, question, context, options, correct: parseInt(correctIdx), points: parseInt(points), retries: parseInt(retries) });
+  const quizObj = { id: quizId, question, context, options, correct: parseInt(correctIdx), points: parseInt(points), retries: parseInt(retries) };
+  // Base64로 인코딩하여 HTML 속성에서 따옴표 충돌 방지
+  const quizB64 = btoa(unescape(encodeURIComponent(JSON.stringify(quizObj))));
   
-  const quizHtml = `<span class="quiz-link" data-quiz='${quizData}' onclick="return false;">Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}</span>`;
+  const quizHtml = `<span class="quiz-link" data-quiz-b64="${quizB64}" onclick="return false;">Q ${question.substring(0, 30)}${question.length > 30 ? '...' : ''}</span>`;
   
-  document.getElementById('editArea').focus();
-  document.execCommand('insertHTML', false, quizHtml + ' ');
   closeQuizModal();
+  insertAtCursor(quizHtml + '&nbsp;');
+  showToast('퀴즈가 삽입되었습니다.', 'success');
   
   // Clear form
   document.getElementById('quizQuestion').value = '';
@@ -1156,7 +1388,11 @@ async function saveSettings() {
       apiKey: document.getElementById('apiKeyInput').value,
       passRate: parseInt(document.getElementById('passRate').value) || 80
     });
-  } catch(e) { console.error(e); }
+    showToast('설정이 저장되었습니다.', 'success');
+  } catch(e) { 
+    console.error(e);
+    showToast('설정 저장에 실패했습니다.', 'error');
+  }
   showLoading(false);
 }
 
@@ -1209,9 +1445,14 @@ async function loadTeacherContent() {
 function renderUnitNav() {
   const nav = document.getElementById('unitNav');
   nav.innerHTML = '';
-  units.filter(u => (u.level || 1) === 1).forEach((u, i) => {
+  units.forEach((u, i) => {
     const div = document.createElement('div');
+    const indent = ((u.level || 1) - 1) * 12;
     div.className = 'unit-nav-item' + (i === 0 ? ' active' : '');
+    div.style.paddingLeft = (16 + indent) + 'px';
+    div.style.fontSize = (u.level || 1) === 1 ? '12px' : '11px';
+    div.style.fontWeight = (u.level || 1) === 1 ? '500' : '400';
+    if ((u.level || 1) > 1) div.style.color = 'var(--text-secondary)';
     div.textContent = u.name;
     div.dataset.unitId = u.id;
     div.onclick = () => {
@@ -1245,9 +1486,14 @@ function loadStudentUnit(unitId) {
       link.onclick = (e) => {
         e.preventDefault();
         try {
-          const quizData = JSON.parse(link.dataset.quiz);
-          showQuizInMidPanel(quizData);
-        } catch(err) { console.error(err); }
+          let quizData;
+          if (link.dataset.quizB64) {
+            quizData = JSON.parse(decodeURIComponent(escape(atob(link.dataset.quizB64))));
+          } else if (link.dataset.quiz) {
+            quizData = JSON.parse(link.dataset.quiz);
+          }
+          if (quizData) showQuizInMidPanel(quizData);
+        } catch(err) { console.error('Quiz parse error:', err); }
       };
     });
   } else {
@@ -1303,13 +1549,23 @@ function showMediaInMidPanel(type, url, title) {
     mediaHtml = `
       <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
       <div class="media-container">
-        <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe>
       </div>`;
   } else if (type === 'html') {
+    // HTML 시뮬레이션: Google Drive preview 또는 직접 URL을 iframe으로 실행
+    const fileId = extractFileId(url);
+    let embedUrl = url;
+    if (fileId) {
+      // Google Drive HTML 파일은 직접 접근 URL 사용
+      embedUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
+    }
     mediaHtml = `
       <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
-      <div class="media-container">
-        <iframe src="${url}" style="width:100%;height:400px;border:none;border-radius:8px"></iframe>
+      <div class="media-container" style="background:var(--bg-card)">
+        <iframe src="${embedUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" style="width:100%;height:450px;border:none;border-radius:8px"></iframe>
+      </div>
+      <div class="media-controls">
+        <button class="btn-xs" onclick="window.open('${embedUrl}','_blank')">새 탭에서 열기</button>
       </div>`;
   }
   
@@ -1555,10 +1811,7 @@ function bookmarkCurrent() {
     unitId: selectedUnitId, teacherId: currentTeacherId,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
-  const btn = event.target;
-  btn.textContent = '북마크됨 ✓';
-  btn.classList.add('mint');
-  setTimeout(() => { btn.textContent = '북마크'; btn.classList.remove('mint'); }, 2000);
+  showToast('북마크되었습니다.', 'success');
 }
 
 function addMemo() {
@@ -1568,6 +1821,7 @@ function addMemo() {
       unitId: selectedUnitId, teacherId: currentTeacherId, text: memo,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
+    showToast('메모가 저장되었습니다.', 'success');
   }
 }
 
