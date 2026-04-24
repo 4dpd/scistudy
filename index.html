@@ -806,8 +806,11 @@ function getDirectUrl(shareUrl, fileType) {
   switch(fileType) {
     case 'image': case 'gif':
       return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-    case 'video': case 'html':
+    case 'video':
       return `https://drive.google.com/file/d/${fileId}/preview`;
+    case 'html':
+      // HTML은 Google Sites viewer로 실행
+      return `https://drive.google.com/uc?id=${fileId}&export=view`;
     default:
       return `https://drive.google.com/uc?export=view&id=${fileId}`;
   }
@@ -878,13 +881,18 @@ async function handleLogin() {
     if (doc.exists) {
       const data = doc.data();
       if (data.role !== loginRole) {
-        showAlert(`이 계정은 ${data.role === 'student' ? '학생' : '선생님'} 계정입니다.`, 'error');
+        // 역할이 다르면 즉시 로그아웃
+        await auth.signOut();
+        showAlert(`이 계정은 ${data.role === 'student' ? '학생' : '선생님'} 계정입니다. "${data.role === 'student' ? '학생' : '선생님'}" 탭을 선택하고 로그인하세요.`, 'error');
         showLoading(false);
         return;
       }
       currentUser = { uid: cred.user.uid, ...data };
       currentRole = data.role;
       enterApp();
+    } else {
+      await auth.signOut();
+      showAlert('사용자 정보를 찾을 수 없습니다.', 'error');
     }
   } catch (e) {
     showAlert('로그인 실패: 아이디 또는 비밀번호를 확인하세요.', 'error');
@@ -995,19 +1003,29 @@ async function loadTeacherUnits() {
 
 function sortUnitsHierarchy() {
   const sorted = [];
-  function addChildren(parentId, depth) {
-    const children = units.filter(u => (u.parent || '') === (parentId || ''));
+  const added = new Set();
+  function addChildren(parentId) {
+    const children = units.filter(u => {
+      const p = u.parent || null;
+      return p === parentId;
+    });
     children.sort((a, b) => (a.order || 0) - (b.order || 0));
     children.forEach(child => {
-      sorted.push(child);
-      addChildren(child.id, depth + 1);
+      if (!added.has(child.id)) {
+        added.add(child.id);
+        sorted.push(child);
+        addChildren(child.id);
+      }
     });
   }
-  addChildren('', 0);
-  addChildren(null, 0);
-  // 부모가 없는 항목 중 아직 추가 안 된 것 포함
+  // 최상위 단원 (parent가 null, '', undefined인 것)
+  addChildren(null);
+  // 혹시 parent가 빈 문자열인 것도 처리
   units.forEach(u => {
-    if (!sorted.find(s => s.id === u.id)) sorted.push(u);
+    if (!added.has(u.id)) {
+      added.add(u.id);
+      sorted.push(u);
+    }
   });
   units = sorted;
 }
@@ -1191,9 +1209,7 @@ function renderPreview() {
       } else if (type === 'video') {
         midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container"><iframe src="' + url + '" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe></div>';
       } else if (type === 'html') {
-        const fileId = extractFileId(url);
-        const embedUrl = fileId ? 'https://drive.google.com/file/d/' + fileId + '/preview' : url;
-        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + embedUrl + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" style="width:100%;height:450px;border:none;border-radius:8px"></iframe></div>';
+        midArea.innerHTML = '<div style="font-size:13px;font-weight:500;margin-bottom:8px">' + title + '</div><div class="media-container" style="background:var(--bg-card)"><iframe src="' + url + '" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style="width:100%;height:450px;border:none;border-radius:8px"></iframe></div>';
       }
     };
   });
@@ -1552,20 +1568,14 @@ function showMediaInMidPanel(type, url, title) {
         <iframe src="${url}" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:350px;border:none;border-radius:8px"></iframe>
       </div>`;
   } else if (type === 'html') {
-    // HTML 시뮬레이션: Google Drive preview 또는 직접 URL을 iframe으로 실행
-    const fileId = extractFileId(url);
-    let embedUrl = url;
-    if (fileId) {
-      // Google Drive HTML 파일은 직접 접근 URL 사용
-      embedUrl = 'https://drive.google.com/file/d/' + fileId + '/preview';
-    }
+    // HTML 시뮬레이션: 직접 실행 가능한 URL로 iframe 표시
     mediaHtml = `
       <div style="margin-bottom:8px;font-size:13px;font-weight:500">${title}</div>
       <div class="media-container" style="background:var(--bg-card)">
-        <iframe src="${embedUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" style="width:100%;height:450px;border:none;border-radius:8px"></iframe>
+        <iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style="width:100%;height:450px;border:none;border-radius:8px"></iframe>
       </div>
       <div class="media-controls">
-        <button class="btn-xs" onclick="window.open('${embedUrl}','_blank')">새 탭에서 열기</button>
+        <button class="btn-xs" onclick="window.open('${url}','_blank')">새 탭에서 열기</button>
       </div>`;
   }
   
