@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SciStudy — 과학 학습 플랫폼</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;500;700&family=Gothic+A1:wght@400;500;700&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Nanum+Pen+Script&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Gamja+Flower&family=Jua&family=Do+Hyeon&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --mint-50:#E8FAF3;--mint-100:#C2F0DE;--mint-200:#7DDDB8;--mint-400:#3CC494;--mint-500:#2BA97D;--mint-600:#1E8A64;--mint-700:#16694C;--mint-800:#0D4A35;
@@ -467,11 +467,30 @@ a{text-decoration:none;color:inherit}
       <!-- Edit Tab -->
       <div id="editTabContent" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
         <div class="toolbar">
+          <select class="tool-btn" onchange="applyFont(this.value)" style="padding:4px 6px;min-width:100px">
+            <option value="">글꼴 선택</option>
+            <option value="Noto Sans KR">Noto Sans KR</option>
+            <option value="Noto Serif KR">Noto Serif KR (명조)</option>
+            <option value="Gothic A1">Gothic A1</option>
+            <option value="Nanum Gothic">나눔고딕</option>
+            <option value="Nanum Myeongjo">나눔명조</option>
+            <option value="Nanum Pen Script">나눔펜</option>
+            <option value="IBM Plex Sans KR">IBM Plex Sans</option>
+            <option value="Gamja Flower">감자꽃</option>
+            <option value="Jua">주아</option>
+            <option value="Do Hyeon">도현</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:2px">
+            <input type="number" id="fontSizeInput" value="14" min="8" max="72" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;background:var(--bg-card);color:var(--text)" onchange="applyFontSize(this.value)">
+            <span style="font-size:11px;color:var(--text-muted)">px</span>
+          </div>
           <button class="tool-btn" onclick="execCmd('bold')"><b>B</b></button>
           <button class="tool-btn" onclick="execCmd('italic')"><i>I</i></button>
           <button class="tool-btn" onclick="execCmd('underline')"><u>U</u></button>
           <button class="tool-btn" onclick="execCmd('formatBlock','h2')">H1</button>
           <button class="tool-btn" onclick="execCmd('formatBlock','h3')">H2</button>
+          <button class="tool-btn" onclick="applyColor()">글자색</button>
+          <input type="color" id="textColorPicker" value="#2A2825" style="display:none" onchange="applyColorValue(this.value)">
           <button class="tool-btn special" onclick="openMediaModal()">미디어 링크 삽입</button>
           <button class="tool-btn quiz-tool" onclick="openQuizModal()">퀴즈 삽입</button>
         </div>
@@ -1190,6 +1209,60 @@ function switchEditorTab(tab) {
 
 function execCmd(cmd, val) {
   document.execCommand(cmd, false, val || null);
+  document.getElementById('editArea').focus();
+}
+
+function applyFont(fontName) {
+  if (!fontName) return;
+  // Google Fonts 동적 로드
+  const link = document.createElement('link');
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g,'+')}:wght@400;500;700&display=swap`;
+  link.rel = 'stylesheet';
+  document.head.appendChild(link);
+  
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0 && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontFamily = `"${fontName}", sans-serif`;
+    range.surroundContents(span);
+  } else {
+    // 선택 영역이 없으면 이후 입력에 적용
+    document.execCommand('fontName', false, fontName);
+  }
+  document.getElementById('editArea').focus();
+}
+
+function applyFontSize(size) {
+  const px = parseInt(size);
+  if (px < 8 || px > 72) return;
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0 && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontSize = px + 'px';
+    range.surroundContents(span);
+  } else {
+    // 선택 영역 없으면 커서 위치에 span 삽입
+    const span = document.createElement('span');
+    span.style.fontSize = px + 'px';
+    span.innerHTML = '&nbsp;';
+    const range = sel.getRangeAt(0);
+    range.insertNode(span);
+    range.setStartAfter(span);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  document.getElementById('editArea').focus();
+}
+
+function applyColor() {
+  document.getElementById('textColorPicker').click();
+}
+
+function applyColorValue(color) {
+  document.execCommand('foreColor', false, color);
   document.getElementById('editArea').focus();
 }
 
