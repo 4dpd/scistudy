@@ -340,7 +340,7 @@ a{text-decoration:none;color:inherit}
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
   :root{--topbar-h:48px}
-  body{overflow:auto;height:auto}
+  body{overflow:auto;height:auto;-webkit-overflow-scrolling:touch}
   
   /* Login */
   .login-card{padding:28px 20px;margin:10px}
@@ -365,7 +365,7 @@ a{text-decoration:none;color:inherit}
   
   /* ===== TEACHER MOBILE ===== */
   .teacher-sidebar{width:100%!important;max-height:200px;border-right:none;border-bottom:1px solid var(--border)}
-  .main-content{flex-direction:column!important}
+  .main-content{flex-direction:column!important;overflow:visible!important}
   .resizer{display:none!important}
   .editor-tabs{overflow-x:auto}
   .editor-tab{font-size:11px;padding:7px 12px;white-space:nowrap}
@@ -374,12 +374,22 @@ a{text-decoration:none;color:inherit}
   #fontSelect{min-width:70px!important;font-size:11px}
   #sizeSelect{min-width:50px!important;font-size:11px}
   .edit-area{padding:12px;font-size:13px;line-height:1.7}
-  .panel{min-height:0!important}
+  .panel{min-height:0!important;overflow:visible!important}
   #editorPanel{flex:1!important}
   
   /* ===== STUDENT MOBILE ===== */
-  #studentMainContent{flex-direction:column!important;position:relative}
-  #studentContentPanel,#studentMidPanel,#studentAiPanel{flex:none!important;width:100%!important}
+  #studentMainContent{flex-direction:column!important;position:relative;overflow:visible!important}
+  #studentContentPanel,#studentMidPanel,#studentAiPanel{flex:none!important;width:100%!important;overflow:visible!important;min-height:calc(100vh - 160px)}
+  
+  /* 패널 바디 터치 스크롤 활성화 */
+  .panel-body{overflow-y:auto!important;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 200px);touch-action:pan-y}
+  
+  /* 가로 폭 고정 — 콘텐츠가 화면 밖으로 나가지 않도록 */
+  .content-text{word-break:break-word;overflow-wrap:break-word}
+  .content-text img{max-width:100%!important;height:auto!important}
+  .media-container{max-width:100%!important}
+  .media-container img{max-width:100%!important;height:auto!important}
+  .media-container iframe{max-width:100%!important}
   
   /* 모바일에서는 탭으로 전환 */
   #studentMidPanel,#studentAiPanel{display:none!important}
@@ -392,19 +402,20 @@ a{text-decoration:none;color:inherit}
   #studentMainContent.show-ai #studentAiPanel{display:flex!important}
   
   .mobile-bottom-tabs{display:block}
-  .app.visible{padding-bottom:56px}
+  .app.visible{padding-bottom:60px}
   
-  /* Content area fills screen */
-  .panel-body{padding:10px}
+  /* Content area */
   .content-text{font-size:13px;line-height:1.8}
   
-  /* Chat */
+  /* Chat - AI 튜터 패널도 스크롤 가능하게 */
+  .chat-container{height:auto;min-height:calc(100vh - 260px)}
+  .chat-messages{max-height:calc(100vh - 340px);overflow-y:auto;-webkit-overflow-scrolling:touch}
   .chat-input{font-size:14px;padding:10px 14px}
   .chat-send{font-size:12px;padding:8px 14px}
   .chat-bubble{font-size:13px;max-width:92%}
   
   /* Modals */
-  .modal{width:95%;padding:20px;max-height:90vh;overflow-y:auto}
+  .modal{width:95%;padding:20px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .modal-title{font-size:15px}
   
   /* Stats */
@@ -412,6 +423,9 @@ a{text-decoration:none;color:inherit}
   
   /* User menu */
   .user-menu{right:4px}
+  
+  /* 퀴즈/미디어 패널 스크롤 */
+  #midPanelBody{overflow-y:auto!important;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 200px)}
 }
 
 @media (max-width: 480px) {
