@@ -522,13 +522,21 @@ a{text-decoration:none;color:inherit}
       <!-- Settings Tab -->
       <div id="settingsTabContent" style="display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;padding:20px">
         <div class="settings-section">
+          <div class="settings-title">수강 비밀번호</div>
+          <div class="settings-desc">학생이 이 비밀번호를 입력해야 교재를 열람할 수 있습니다. 비밀번호를 알려준 학생만 수강 가능합니다.</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="form-input" id="coursePassword" type="text" placeholder="수강 비밀번호 설정 (예: science2024)" style="flex:1">
+            <button class="btn-xs lav" onclick="togglePasswordVisibility()" id="togglePwBtn">보기</button>
+          </div>
+        </div>
+        <div class="settings-section">
           <div class="settings-title">AI 튜터 시스템 프롬프트</div>
           <div class="settings-desc">학생이 AI 튜터에게 질문할 때 사용되는 기본 지시문입니다.</div>
           <textarea class="form-input" id="aiPrompt" rows="5" placeholder="예: 이 과학 수업의 AI 튜터 역할을 해주세요. 학생에게 친절하고 쉬운 언어로 과학 개념을 설명해주세요..." style="resize:vertical"></textarea>
         </div>
         <div class="settings-section">
           <div class="settings-title">ChatGPT API Key</div>
-          <div class="settings-desc">학생 AI 튜터 기능에 사용됩니다.</div>
+          <div class="settings-desc">학생 AI 튜터 기능에 사용됩니다. 수강 비밀번호를 설정하면 인가된 학생만 사용할 수 있습니다.</div>
           <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-...">
         </div>
         <div class="settings-section">
@@ -751,6 +759,28 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <!-- ===== COLOR PICKER MODAL ===== -->
+
+<!-- ===== COURSE PASSWORD MODAL ===== -->
+<div class="modal-overlay" id="coursePasswordModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">
+      수강 비밀번호 입력
+      <div class="modal-close" onclick="closeCoursePasswordModal()">✕</div>
+    </div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.7" id="coursePasswordDesc">
+      이 선생님의 교재를 열람하려면 수강 비밀번호가 필요합니다.
+    </div>
+    <div class="form-group">
+      <label class="form-label">비밀번호</label>
+      <input class="form-input" id="coursePasswordInput" type="password" placeholder="선생님에게 받은 비밀번호 입력" onkeypress="if(event.key==='Enter')verifyCoursePassword()">
+    </div>
+    <div id="coursePasswordError" style="display:none;font-size:12px;color:var(--red-600);margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeCoursePasswordModal()" style="width:auto;padding:8px 20px">취소</button>
+      <button class="btn btn-student" onclick="verifyCoursePassword()" style="width:auto;padding:8px 20px">확인</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="colorModal">
   <div class="modal" style="max-width:340px">
     <div class="modal-title">
@@ -1054,6 +1084,7 @@ function enterApp() {
   units = [];
   contents = {};
   editCache = {};
+  verifiedTeachers = {};
   selectedUnitId = null;
   activeMainUnitId = null;
   currentTeacherId = null;
@@ -1809,7 +1840,8 @@ async function saveSettings() {
     await db.collection('users').doc(currentUser.uid).update({
       aiPrompt: document.getElementById('aiPrompt').value,
       apiKey: document.getElementById('apiKeyInput').value,
-      passRate: parseInt(document.getElementById('passRate').value) || 80
+      passRate: parseInt(document.getElementById('passRate').value) || 80,
+      coursePassword: document.getElementById('coursePassword').value.trim()
     });
     showToast('설정이 저장되었습니다.', 'success');
   } catch(e) { 
@@ -1826,6 +1858,19 @@ async function loadSettings() {
     if (d.aiPrompt) document.getElementById('aiPrompt').value = d.aiPrompt;
     if (d.apiKey) document.getElementById('apiKeyInput').value = d.apiKey;
     if (d.passRate) document.getElementById('passRate').value = d.passRate;
+    if (d.coursePassword) document.getElementById('coursePassword').value = d.coursePassword;
+  }
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('coursePassword');
+  const btn = document.getElementById('togglePwBtn');
+  if (input.type === 'text') {
+    input.type = 'password';
+    btn.textContent = '보기';
+  } else {
+    input.type = 'text';
+    btn.textContent = '숨기기';
   }
 }
 
@@ -1841,6 +1886,8 @@ async function loadTeacherList() {
     sel.innerHTML += `<option value="${doc.id}">${d.name} 선생님</option>`;
   });
 }
+
+let verifiedTeachers = {}; // 이미 비밀번호 인증된 선생님 목록
 
 async function loadTeacherContent() {
   const teacherId = document.getElementById('teacherSelect').value;
@@ -1858,7 +1905,77 @@ async function loadTeacherContent() {
     return;
   }
   
-  // 같은 선생님을 다시 선택한 경우도 새로 로드
+  // 이미 인증된 선생님이면 바로 로드
+  if (verifiedTeachers[teacherId]) {
+    await doLoadTeacherContent(teacherId);
+    return;
+  }
+  
+  // 선생님의 비밀번호 설정 확인
+  try {
+    const teacherDoc = await db.collection('users').doc(teacherId).get();
+    const teacherData = teacherDoc.data();
+    
+    if (teacherData.coursePassword && teacherData.coursePassword.trim() !== '') {
+      // 비밀번호가 설정되어 있으면 모달 표시
+      pendingTeacherId = teacherId;
+      pendingTeacherName = teacherData.name || '선생님';
+      document.getElementById('coursePasswordDesc').textContent = `"${pendingTeacherName} 선생님"의 교재를 열람하려면 수강 비밀번호가 필요합니다.`;
+      document.getElementById('coursePasswordInput').value = '';
+      document.getElementById('coursePasswordError').style.display = 'none';
+      document.getElementById('coursePasswordModal').classList.add('show');
+    } else {
+      // 비밀번호 미설정 — 바로 로드
+      verifiedTeachers[teacherId] = true;
+      await doLoadTeacherContent(teacherId);
+    }
+  } catch(e) {
+    console.error(e);
+    // 에러 시에도 로드 시도
+    await doLoadTeacherContent(teacherId);
+  }
+}
+
+let pendingTeacherId = null;
+let pendingTeacherName = '';
+
+function closeCoursePasswordModal() {
+  document.getElementById('coursePasswordModal').classList.remove('show');
+  // 비밀번호 취소 시 선생님 선택 초기화
+  document.getElementById('teacherSelect').value = '';
+  pendingTeacherId = null;
+}
+
+async function verifyCoursePassword() {
+  const inputPw = document.getElementById('coursePasswordInput').value;
+  if (!inputPw || !pendingTeacherId) return;
+  
+  try {
+    const teacherDoc = await db.collection('users').doc(pendingTeacherId).get();
+    const correctPw = teacherDoc.data().coursePassword;
+    
+    if (inputPw === correctPw) {
+      // 인증 성공
+      verifiedTeachers[pendingTeacherId] = true;
+      document.getElementById('coursePasswordModal').classList.remove('show');
+      showToast(`${pendingTeacherName} 선생님 교재에 접속합니다.`, 'success');
+      await doLoadTeacherContent(pendingTeacherId);
+      pendingTeacherId = null;
+    } else {
+      // 비밀번호 틀림
+      document.getElementById('coursePasswordError').textContent = '비밀번호가 올바르지 않습니다.';
+      document.getElementById('coursePasswordError').style.display = 'block';
+      document.getElementById('coursePasswordInput').value = '';
+      document.getElementById('coursePasswordInput').focus();
+    }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('coursePasswordError').textContent = '확인에 실패했습니다. 다시 시도하세요.';
+    document.getElementById('coursePasswordError').style.display = 'block';
+  }
+}
+
+async function doLoadTeacherContent(teacherId) {
   // 이전 데이터 완전 제거
   units = [];
   contents = {};
@@ -1877,24 +1994,20 @@ async function loadTeacherContent() {
   try {
     console.log('학생: 선생님 콘텐츠 로드 시작 - teacherId:', teacherId);
     
-    // 이 선생님의 단원만 로드
-    const unitSnap = await db.collection('users').doc(teacherId).collection('units').orderBy('order').get();
     const loadedUnits = [];
+    const unitSnap = await db.collection('users').doc(teacherId).collection('units').orderBy('order').get();
     unitSnap.forEach(doc => loadedUnits.push({ id: doc.id, ...doc.data() }));
     
-    // 이 선생님의 콘텐츠만 로드
     const loadedContents = {};
     const contentSnap = await db.collection('users').doc(teacherId).collection('contents').get();
     contentSnap.forEach(doc => loadedContents[doc.id] = doc.data());
     
     console.log('로드 완료 - 단원:', loadedUnits.length, '콘텐츠:', Object.keys(loadedContents).length);
     
-    // 전역 변수에 할당 (로드 완료 후)
     units = loadedUnits;
     contents = loadedContents;
     sortUnitsHierarchy();
     
-    // 화면 렌더링
     renderUnitNav();
     
     if (units.length > 0) {
