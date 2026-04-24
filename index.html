@@ -1828,8 +1828,8 @@ async function loadTeacherContent() {
       const firstLv1 = units.find(u => (u.level || 1) === 1);
       if (firstLv1) {
         activeMainUnitId = firstLv1.id;
+        selectedUnitId = firstLv1.id;
         renderUnitNav();
-        // Lv1 자체 내용을 먼저 로드
         loadStudentUnit(firstLv1.id);
       } else {
         loadStudentUnit(units[0].id);
@@ -1852,44 +1852,61 @@ function renderUnitNav() {
   nav.innerHTML = '';
   
   const lv1Units = units.filter(u => (u.level || 1) === 1);
+  if (lv1Units.length === 0) return;
+  
+  // 첫 로드 시 activeMainUnitId 설정
+  if (!activeMainUnitId) {
+    activeMainUnitId = lv1Units[0].id;
+  }
   
   // Lv1 메인 행
   const mainRow = document.createElement('div');
   mainRow.className = 'unit-nav-row main-row';
-  lv1Units.forEach((u, i) => {
+  lv1Units.forEach(u => {
     const div = document.createElement('div');
-    div.className = 'unit-nav-item' + (i === 0 && !activeMainUnitId ? ' active' : '') + (u.id === activeMainUnitId ? ' active' : '');
+    const isActive = u.id === activeMainUnitId;
+    // Lv1이 선택된 상태이고, 현재 보고 있는 단원도 이 Lv1이면 active
+    const isViewing = u.id === selectedUnitId;
+    div.className = 'unit-nav-item' + (isActive ? ' active' : '');
     div.textContent = u.name;
     div.dataset.unitId = u.id;
     div.onclick = () => {
       activeMainUnitId = u.id;
+      selectedUnitId = u.id;
       renderUnitNav();
-      // Lv1 클릭 시 Lv1 자체 내용을 먼저 로드
       loadStudentUnit(u.id);
     };
     mainRow.appendChild(div);
   });
   nav.appendChild(mainRow);
   
-  // 첫 로드 시 activeMainUnitId 설정
-  if (!activeMainUnitId && lv1Units.length > 0) {
-    activeMainUnitId = lv1Units[0].id;
-  }
-  
   // Lv2 서브 행 (선택된 Lv1의 자식들)
   const subUnits = units.filter(u => u.parent === activeMainUnitId && (u.level || 1) >= 2);
   if (subUnits.length > 0) {
     const subRow = document.createElement('div');
     subRow.className = 'unit-nav-row sub-row';
-    subUnits.forEach((u, i) => {
+    
+    // "전체보기" 탭 (Lv1 자체 내용)
+    const overviewDiv = document.createElement('div');
+    overviewDiv.className = 'unit-nav-item sub' + (selectedUnitId === activeMainUnitId ? ' active' : '');
+    overviewDiv.textContent = '▸ 개요';
+    overviewDiv.onclick = () => {
+      selectedUnitId = activeMainUnitId;
+      renderUnitNav();
+      loadStudentUnit(activeMainUnitId);
+    };
+    subRow.appendChild(overviewDiv);
+    
+    // Lv2 탭들
+    subUnits.forEach(u => {
       const div = document.createElement('div');
       div.className = 'unit-nav-item sub' + (u.id === selectedUnitId ? ' active' : '');
       div.textContent = u.name;
       div.dataset.unitId = u.id;
       div.onclick = () => {
+        selectedUnitId = u.id;
+        renderUnitNav();
         loadStudentUnit(u.id);
-        subRow.querySelectorAll('.unit-nav-item').forEach(n => n.classList.remove('active'));
-        div.classList.add('active');
       };
       subRow.appendChild(div);
     });
