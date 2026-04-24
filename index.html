@@ -995,8 +995,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 페이지를 열 때마다 반드시 로그인 화면부터 시작 (자동 로그인 없음)
-auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+// 새로고침해도 로그인 유지, 탭/브라우저 닫으면 풀림
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 // ============================================================
 // STATE
@@ -1101,7 +1101,7 @@ async function handleLogin() {
   
   showLoading(true);
   try {
-    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+    await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
     const email = `${id}@scistudy.app`;
     const cred = await auth.signInWithEmailAndPassword(email, pw);
     const userDoc = await db.collection('users').doc(cred.user.uid).get();
@@ -1154,7 +1154,7 @@ async function handleSignup() {
 
   showLoading(true);
   try {
-    await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+    await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
     const fakeEmail = `${id}@scistudy.app`;
     const cred = await auth.createUserWithEmailAndPassword(fakeEmail, pw);
     const userData = {
@@ -2651,11 +2651,25 @@ function startResize(e, panelId) {
 // ============================================================
 // AUTH STATE OBSERVER
 // ============================================================
-// 자동 로그인 하지 않음 — 항상 로그인 화면부터 시작
+// SESSION 모드: 같은 탭에서 새로고침 시 로그인 유지, 탭 닫으면 풀림
 auth.onAuthStateChanged(async (user) => {
-  // NONE 모드이므로 페이지 로드 시 user는 항상 null
-  // handleLogin()에서 직접 로그인 처리함
-  if (!user) {
+  if (user) {
+    // 세션이 남아있으면 자동 복원
+    try {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        currentUser = { uid: user.uid, ...doc.data() };
+        currentRole = doc.data().role;
+        enterApp();
+      } else {
+        await auth.signOut();
+      }
+    } catch(e) {
+      console.error('세션 복원 실패:', e);
+      await auth.signOut();
+    }
+  } else {
+    // 세션 없음 — 로그인 화면 표시
     document.getElementById('loginPage').style.display = '';
     document.getElementById('teacherApp').classList.remove('visible');
     document.getElementById('studentApp').classList.remove('visible');
