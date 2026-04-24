@@ -1018,6 +1018,7 @@ function enterApp() {
   // 모든 전역 상태 완전 초기화
   units = [];
   contents = {};
+  editCache = {};
   selectedUnitId = null;
   activeMainUnitId = null;
   currentTeacherId = null;
@@ -1161,15 +1162,37 @@ function filterParentByLevel() {
   }
 }
 
+// 각 단원별 편집 내용을 메모리에 캐시
+let editCache = {};
+
 async function selectUnit(unitId) {
+  // 현재 편집 중인 내용을 캐시에 저장
+  if (selectedUnitId) {
+    const currentHtml = document.getElementById('editArea').innerHTML;
+    if (currentHtml && currentHtml !== '<p>내용을 입력하세요...</p>' && currentHtml !== '<p>단원을 선택하거나 추가하세요...</p>') {
+      editCache[selectedUnitId] = currentHtml;
+    }
+  }
+  
   selectedUnitId = unitId;
   renderTree();
-  const contentDoc = await db.collection('users').doc(currentUser.uid).collection('contents').doc(unitId).get();
-  if (contentDoc.exists) {
-    document.getElementById('editArea').innerHTML = contentDoc.data().html || '<p>내용을 입력하세요...</p>';
+  
+  // 캐시에 있으면 캐시에서 로드, 없으면 Firestore에서 로드
+  if (editCache[unitId]) {
+    document.getElementById('editArea').innerHTML = editCache[unitId];
   } else {
-    document.getElementById('editArea').innerHTML = '<p>내용을 입력하세요...</p>';
+    const contentDoc = await db.collection('users').doc(currentUser.uid).collection('contents').doc(unitId).get();
+    if (contentDoc.exists) {
+      const html = contentDoc.data().html || '<p>내용을 입력하세요...</p>';
+      document.getElementById('editArea').innerHTML = html;
+      editCache[unitId] = html;
+    } else {
+      document.getElementById('editArea').innerHTML = '<p>내용을 입력하세요...</p>';
+    }
   }
+  
+  bindEditAreaLinks();
+  
   // 미리보기 탭이 열려있으면 자동 갱신
   const previewTab = document.querySelector('.editor-tab[data-tab="preview"]');
   if (previewTab && previewTab.classList.contains('active')) {
@@ -1340,19 +1363,42 @@ function applyColorValue(color) {
 }
 
 async function saveContent() {
-  if (!selectedUnitId) return showToast('단원을 먼저 선택하세요.', 'error');
+  if (!currentUser) return showToast('로그인이 필요합니다.', 'error');
+  
+  // 현재 편집 중인 내용도 캐시에 저장
+  if (selectedUnitId) {
+    const currentHtml = document.getElementById('editArea').innerHTML;
+    if (currentHtml && currentHtml !== '<p>내용을 입력하세요...</p>' && currentHtml !== '<p>단원을 선택하거나 추가하세요...</p>') {
+      editCache[selectedUnitId] = currentHtml;
+    }
+  }
+  
+  // 캐시된 모든 단원 내용을 한 번에 저장
+  const keysToSave = Object.keys(editCache);
+  if (keysToSave.length === 0) return showToast('저장할 내용이 없습니다.', 'info');
+  
   showLoading(true);
-  try {
-    const html = document.getElementById('editArea').innerHTML;
-    await db.collection('users').doc(currentUser.uid).collection('contents').doc(selectedUnitId).set({
-      html, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    showLoading(false);
-    showToast('저장되었습니다.', 'success');
-  } catch(e) {
-    console.error(e);
-    showLoading(false);
-    showToast('저장에 실패했습니다.', 'error');
+  let savedCount = 0;
+  let failCount = 0;
+  
+  for (const unitId of keysToSave) {
+    try {
+      await db.collection('users').doc(currentUser.uid).collection('contents').doc(unitId).set({
+        html: editCache[unitId],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      savedCount++;
+    } catch(e) {
+      console.error('저장 실패 - unitId:', unitId, e);
+      failCount++;
+    }
+  }
+  
+  showLoading(false);
+  if (failCount === 0) {
+    showToast(`${savedCount}개 단원이 모두 저장되었습니다.`, 'success');
+  } else {
+    showToast(`${savedCount}개 저장, ${failCount}개 실패`, 'error');
   }
 }
 
@@ -1782,13 +1828,9 @@ async function loadTeacherContent() {
       const firstLv1 = units.find(u => (u.level || 1) === 1);
       if (firstLv1) {
         activeMainUnitId = firstLv1.id;
-        renderUnitNav(); // activeMainUnitId 반영
-        const children = units.filter(c => c.parent === firstLv1.id);
-        if (children.length > 0) {
-          loadStudentUnit(children[0].id);
-        } else {
-          loadStudentUnit(firstLv1.id);
-        }
+        renderUnitNav();
+        // Lv1 자체 내용을 먼저 로드
+        loadStudentUnit(firstLv1.id);
       } else {
         loadStudentUnit(units[0].id);
       }
@@ -1822,13 +1864,8 @@ function renderUnitNav() {
     div.onclick = () => {
       activeMainUnitId = u.id;
       renderUnitNav();
-      // Lv2 자식이 있으면 첫 자식 로드, 없으면 Lv1 자체 로드
-      const children = units.filter(c => c.parent === u.id);
-      if (children.length > 0) {
-        loadStudentUnit(children[0].id);
-      } else {
-        loadStudentUnit(u.id);
-      }
+      // Lv1 클릭 시 Lv1 자체 내용을 먼저 로드
+      loadStudentUnit(u.id);
     };
     mainRow.appendChild(div);
   });
