@@ -326,7 +326,9 @@ a{text-decoration:none;color:inherit}
 .tree-item{position:relative}
 .tree-delete{display:none;padding:2px 6px;border-radius:4px;font-size:10px;color:var(--red-400);cursor:pointer;margin-left:auto;flex-shrink:0;transition:all 0.15s}
 .tree-delete:hover{background:var(--red-50);color:var(--red-600)}
-.tree-item:hover .tree-delete{display:block}
+.tree-edit{display:none;padding:2px 6px;border-radius:4px;font-size:10px;color:var(--lav-500);cursor:pointer;flex-shrink:0;transition:all 0.15s}
+.tree-edit:hover{background:var(--lav-50);color:var(--lav-700)}
+.tree-item:hover .tree-delete,.tree-item:hover .tree-edit{display:block}
 </style>
 </head>
 <body>
@@ -500,8 +502,7 @@ a{text-decoration:none;color:inherit}
           <button class="tool-btn" onclick="applyHeading('h2')" title="큰 제목">제목1</button>
           <button class="tool-btn" onclick="applyHeading('h3')" title="중간 제목">제목2</button>
           <button class="tool-btn" onclick="applyHeading('p')" title="본문으로 되돌리기">본문</button>
-          <button class="tool-btn" onclick="applyColor()" title="글자 색상">글자색</button>
-          <input type="color" id="textColorPicker" value="#2A2825" style="display:none" onchange="applyColorValue(this.value)">
+          <button class="tool-btn" onclick="openColorModal()" title="글자 색상">글자색</button>
           <button class="tool-btn special" onclick="openMediaModal()">미디어 링크</button>
           <button class="tool-btn quiz-tool" onclick="openQuizModal()">퀴즈</button>
         </div>
@@ -745,6 +746,40 @@ a{text-decoration:none;color:inherit}
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeQuizModal()" style="width:auto;padding:8px 20px">취소</button>
       <button class="btn btn-teacher" onclick="insertQuiz()" id="quizModalBtn" style="width:auto;padding:8px 20px">삽입</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COLOR PICKER MODAL ===== -->
+<div class="modal-overlay" id="colorModal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-title">
+      글자색 선택
+      <div class="modal-close" onclick="closeColorModal()">✕</div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <div onclick="pickColor('#2A2825')" style="width:32px;height:32px;border-radius:6px;background:#2A2825;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#E85555')" style="width:32px;height:32px;border-radius:6px;background:#E85555;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#F4845F')" style="width:32px;height:32px;border-radius:6px;background:#F4845F;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#F5B742')" style="width:32px;height:32px;border-radius:6px;background:#F5B742;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#3CC494')" style="width:32px;height:32px;border-radius:6px;background:#3CC494;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#5AADF5')" style="width:32px;height:32px;border-radius:6px;background:#5AADF5;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#8B80E8')" style="width:32px;height:32px;border-radius:6px;background:#8B80E8;cursor:pointer;border:1.5px solid var(--border)"></div>
+      <div onclick="pickColor('#F06B8A')" style="width:32px;height:32px;border-radius:6px;background:#F06B8A;cursor:pointer;border:1.5px solid var(--border)"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">직접 입력</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="color" id="customColorInput" value="#2A2825" style="width:40px;height:34px;border:none;cursor:pointer;border-radius:6px">
+        <input class="form-input" id="colorHexInput" value="#2A2825" style="flex:1;font-family:monospace" oninput="document.getElementById('customColorInput').value=this.value">
+      </div>
+    </div>
+    <div style="margin-top:6px;padding:10px;border-radius:var(--radius);border:1px solid var(--border);font-size:14px" id="colorPreviewText">
+      <span id="colorPreviewSpan" style="color:#2A2825">미리보기 텍스트입니다</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeColorModal()" style="width:auto;padding:8px 20px">취소</button>
+      <button class="btn btn-teacher" onclick="confirmColor()" style="width:auto;padding:8px 20px">확인</button>
     </div>
   </div>
 </div>
@@ -1139,7 +1174,7 @@ function renderTree() {
   units.forEach(u => {
     const div = document.createElement('div');
     div.className = `tree-item tree-l${u.level || 1}${u.id === selectedUnitId ? ' active' : ''}`;
-    div.innerHTML = `<span class="dot"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span><span class="tree-delete" onclick="event.stopPropagation();deleteUnit('${u.id}','${u.name}')">삭제</span>`;
+    div.innerHTML = `<span class="dot"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span><span class="tree-edit" onclick="event.stopPropagation();renameUnit('${u.id}','${u.name.replace(/'/g, "\\'")}')">수정</span><span class="tree-delete" onclick="event.stopPropagation();deleteUnit('${u.id}','${u.name.replace(/'/g, "\\'")}')">삭제</span>`;
     div.onclick = () => selectUnit(u.id);
     list.appendChild(div);
   });
@@ -1274,6 +1309,24 @@ async function deleteUnit(unitId, unitName) {
   showLoading(false);
 }
 
+async function renameUnit(unitId, currentName) {
+  const newName = prompt('단원 이름을 수정하세요:', currentName);
+  if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+  
+  showLoading(true);
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('units').doc(unitId).update({
+      name: newName.trim()
+    });
+    showToast(`"${newName.trim()}"으로 수정되었습니다.`, 'success');
+    loadTeacherUnits();
+  } catch(e) {
+    console.error(e);
+    showToast('단원 이름 수정에 실패했습니다.', 'error');
+  }
+  showLoading(false);
+}
+
 function filterTree(query) {
   const items = document.querySelectorAll('.tree-item');
   items.forEach(item => {
@@ -1350,16 +1403,36 @@ function applyHeading(tag) {
   document.getElementById('editArea').focus();
 }
 
-function applyColor() {
+let selectedColor = '#2A2825';
+
+function openColorModal() {
   saveSelection();
-  document.getElementById('textColorPicker').click();
+  selectedColor = '#2A2825';
+  document.getElementById('customColorInput').value = selectedColor;
+  document.getElementById('colorHexInput').value = selectedColor;
+  document.getElementById('colorPreviewSpan').style.color = selectedColor;
+  document.getElementById('colorModal').classList.add('show');
 }
 
-function applyColorValue(color) {
+function closeColorModal() {
+  document.getElementById('colorModal').classList.remove('show');
+}
+
+function pickColor(color) {
+  selectedColor = color;
+  document.getElementById('customColorInput').value = color;
+  document.getElementById('colorHexInput').value = color;
+  document.getElementById('colorPreviewSpan').style.color = color;
+}
+
+function confirmColor() {
+  const color = document.getElementById('customColorInput').value || selectedColor;
+  closeColorModal();
   const editArea = document.getElementById('editArea');
   editArea.focus();
   restoreSelection();
   document.execCommand('foreColor', false, color);
+  showToast('글자색이 적용되었습니다.', 'success');
 }
 
 async function saveContent() {
