@@ -117,11 +117,11 @@ a{text-decoration:none;color:inherit}
 
 /* ===== MAIN CONTENT AREA ===== */
 .main-content{flex:1;display:flex;overflow:hidden}
-.panel{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.panel{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
 .panel-header{padding:8px 14px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:38px}
 .panel-header-label{font-size:11px;font-weight:500;color:var(--text-muted);display:flex;align-items:center;gap:6px}
 .panel-header-actions{display:flex;gap:4px}
-.panel-body{flex:1;padding:14px;overflow-y:auto}
+.panel-body{flex:1;padding:14px;overflow-y:auto;min-height:0}
 .resizer{width:6px;background:var(--bg-surface);cursor:col-resize;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s}
 .resizer:hover{background:var(--gray-200)}
 .resizer-dot{width:2px;height:20px;background:var(--gray-300);border-radius:1px}
@@ -168,7 +168,7 @@ a{text-decoration:none;color:inherit}
 .tool-btn.special:hover{background:var(--lav-50)}
 .tool-btn.quiz-tool{color:var(--amber-600);border-color:var(--amber-100)}
 .tool-btn.quiz-tool:hover{background:var(--amber-50)}
-.edit-area{flex:1;padding:16px;overflow-y:auto;font-size:14px;line-height:1.9;color:var(--text)}
+.edit-area{flex:1;padding:16px;overflow-y:auto;font-size:14px;line-height:1.9;color:var(--text);min-height:0}
 .edit-area[contenteditable]{outline:none}
 .edit-area p{margin-bottom:10px}
 
@@ -459,7 +459,7 @@ a{text-decoration:none;color:inherit}
       </div>
 
       <!-- Edit Tab -->
-      <div id="editTabContent">
+      <div id="editTabContent" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
         <div class="toolbar">
           <button class="tool-btn" onclick="execCmd('bold')"><b>B</b></button>
           <button class="tool-btn" onclick="execCmd('italic')"><i>I</i></button>
@@ -475,15 +475,15 @@ a{text-decoration:none;color:inherit}
       </div>
 
       <!-- Preview Tab -->
-      <div id="previewTabContent" style="display:none">
+      <div id="previewTabContent" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden">
         <div class="panel-header">
           <span class="panel-header-label">학생 화면 미리보기</span>
         </div>
-        <div class="panel-body" id="previewArea"></div>
+        <div class="panel-body" id="previewArea" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
 
       <!-- Settings Tab -->
-      <div id="settingsTabContent" style="display:none;padding:20px">
+      <div id="settingsTabContent" style="display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;padding:20px">
         <div class="settings-section">
           <div class="settings-title">AI 튜터 시스템 프롬프트</div>
           <div class="settings-desc">학생이 AI 튜터에게 질문할 때 사용되는 기본 지시문입니다.</div>
@@ -1175,9 +1175,9 @@ function filterTree(query) {
 // ============================================================
 function switchEditorTab(tab) {
   document.querySelectorAll('.editor-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.getElementById('editTabContent').style.display = tab === 'edit' ? '' : 'none';
-  document.getElementById('previewTabContent').style.display = tab === 'preview' ? '' : 'none';
-  document.getElementById('settingsTabContent').style.display = tab === 'settings' ? '' : 'none';
+  document.getElementById('editTabContent').style.display = tab === 'edit' ? 'flex' : 'none';
+  document.getElementById('previewTabContent').style.display = tab === 'preview' ? 'flex' : 'none';
+  document.getElementById('settingsTabContent').style.display = tab === 'settings' ? 'flex' : 'none';
   if (tab === 'preview') renderPreview();
 }
 
