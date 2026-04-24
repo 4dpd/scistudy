@@ -329,6 +329,98 @@ a{text-decoration:none;color:inherit}
 .tree-edit{display:none;padding:2px 6px;border-radius:4px;font-size:10px;color:var(--lav-500);cursor:pointer;flex-shrink:0;transition:all 0.15s}
 .tree-edit:hover{background:var(--lav-50);color:var(--lav-700)}
 .tree-item:hover .tree-delete,.tree-item:hover .tree-edit{display:block}
+
+/* ===== MOBILE BOTTOM TABS ===== */
+.mobile-bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg-card);border-top:1px solid var(--border);z-index:50;padding:4px 0;padding-bottom:env(safe-area-inset-bottom)}
+.mobile-bottom-tabs-inner{display:flex;justify-content:space-around}
+.mobile-tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;cursor:pointer;color:var(--text-muted);font-size:10px;font-weight:500;border:none;background:none;transition:color 0.15s}
+.mobile-tab.active{color:var(--mint-600)}
+.mobile-tab svg{width:20px;height:20px;fill:currentColor}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  :root{--topbar-h:48px}
+  body{overflow:auto;height:auto}
+  
+  /* Login */
+  .login-card{padding:28px 20px;margin:10px}
+  .login-logo h1{font-size:20px}
+  .form-row{grid-template-columns:1fr}
+  
+  /* Topbar */
+  .topbar{padding:0 12px;flex-wrap:wrap;height:auto;min-height:48px;gap:6px;padding-top:6px;padding-bottom:6px}
+  .topbar-left{gap:6px}
+  .topbar-title{font-size:13px}
+  .topbar-mode{font-size:10px;padding:2px 8px}
+  .topbar-right{gap:4px;flex-wrap:wrap}
+  .topbar-btn{padding:4px 10px;font-size:11px}
+  .topbar-search{width:100px;font-size:11px;padding:4px 8px}
+  .topbar-select{font-size:11px;padding:4px 6px;max-width:120px}
+  .topbar-badge{font-size:10px;padding:2px 6px}
+  
+  /* Unit nav */
+  .unit-nav-row{padding:0 8px;gap:0}
+  .unit-nav-item{padding:6px 10px;font-size:11px}
+  .unit-nav-item.sub{padding:5px 8px;font-size:10px}
+  
+  /* ===== TEACHER MOBILE ===== */
+  .teacher-sidebar{width:100%!important;max-height:200px;border-right:none;border-bottom:1px solid var(--border)}
+  .main-content{flex-direction:column!important}
+  .resizer{display:none!important}
+  .editor-tabs{overflow-x:auto}
+  .editor-tab{font-size:11px;padding:7px 12px;white-space:nowrap}
+  .toolbar{padding:6px 8px;gap:2px}
+  .tool-btn{padding:4px 7px;font-size:11px}
+  #fontSelect{min-width:70px!important;font-size:11px}
+  #sizeSelect{min-width:50px!important;font-size:11px}
+  .edit-area{padding:12px;font-size:13px;line-height:1.7}
+  .panel{min-height:0!important}
+  #editorPanel{flex:1!important}
+  
+  /* ===== STUDENT MOBILE ===== */
+  #studentMainContent{flex-direction:column!important;position:relative}
+  #studentContentPanel,#studentMidPanel,#studentAiPanel{flex:none!important;width:100%!important}
+  
+  /* 모바일에서는 탭으로 전환 */
+  #studentMidPanel,#studentAiPanel{display:none!important}
+  #studentContentPanel{display:flex!important}
+  #studentMainContent.show-quiz #studentContentPanel{display:none!important}
+  #studentMainContent.show-quiz #studentMidPanel{display:flex!important}
+  #studentMainContent.show-quiz #studentAiPanel{display:none!important}
+  #studentMainContent.show-ai #studentContentPanel{display:none!important}
+  #studentMainContent.show-ai #studentMidPanel{display:none!important}
+  #studentMainContent.show-ai #studentAiPanel{display:flex!important}
+  
+  .mobile-bottom-tabs{display:block}
+  .app.visible{padding-bottom:56px}
+  
+  /* Content area fills screen */
+  .panel-body{padding:10px}
+  .content-text{font-size:13px;line-height:1.8}
+  
+  /* Chat */
+  .chat-input{font-size:14px;padding:10px 14px}
+  .chat-send{font-size:12px;padding:8px 14px}
+  .chat-bubble{font-size:13px;max-width:92%}
+  
+  /* Modals */
+  .modal{width:95%;padding:20px;max-height:90vh;overflow-y:auto}
+  .modal-title{font-size:15px}
+  
+  /* Stats */
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  
+  /* User menu */
+  .user-menu{right:4px}
+}
+
+@media (max-width: 480px) {
+  .topbar-search{display:none}
+  .topbar-mode{display:none}
+  .login-card{padding:24px 16px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .form-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -652,6 +744,24 @@ a{text-decoration:none;color:inherit}
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Tabs -->
+  <div class="mobile-bottom-tabs" id="mobileBottomTabs">
+    <div class="mobile-bottom-tabs-inner">
+      <button class="mobile-tab active" onclick="switchMobileTab('content')" id="mobileTabContent">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zM13 9V3.5L18.5 9H13z"/></svg>
+        교재
+      </button>
+      <button class="mobile-tab" onclick="switchMobileTab('quiz')" id="mobileTabQuiz">
+        <svg viewBox="0 0 24 24"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
+        퀴즈/미디어
+      </button>
+      <button class="mobile-tab" onclick="switchMobileTab('ai')" id="mobileTabAi">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        AI 튜터
+      </button>
     </div>
   </div>
 
@@ -2483,6 +2593,28 @@ function addMemo() {
 // ============================================================
 // RESIZER
 // ============================================================
+// ============================================================
+// MOBILE TAB SWITCHING
+// ============================================================
+function switchMobileTab(tab) {
+  const main = document.getElementById('studentMainContent');
+  main.classList.remove('show-quiz', 'show-ai');
+  if (tab === 'quiz') main.classList.add('show-quiz');
+  if (tab === 'ai') main.classList.add('show-ai');
+  
+  document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('mobileTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+}
+
+// 학생 화면에서 미디어/퀴즈 링크 클릭 시 모바일이면 자동으로 퀴즈 탭 전환
+const originalSwitchMidView = switchMidView;
+switchMidView = function(view) {
+  originalSwitchMidView(view);
+  if (window.innerWidth <= 768 && (view === 'quiz' || view === 'media')) {
+    switchMobileTab('quiz');
+  }
+};
+
 function startResize(e, panelId) {
   e.preventDefault();
   const panel = document.getElementById(panelId);
