@@ -793,13 +793,14 @@ a{text-decoration:none;color:inherit}
 // FIREBASE CONFIG - 본인 프로젝트 설정으로 교체하세요
 // ============================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+    apiKey: "AIzaSyDjQ_SK7TAMw09iPkKtbSCQBRGWopU0bIA",
+    authDomain: "aisciencetutor-705c1.firebaseapp.com",
+    projectId: "aisciencetutor-705c1",
+    storageBucket: "aisciencetutor-705c1.firebasestorage.app",
+    messagingSenderId: "957374578745",
+    appId: "1:957374578745:web:78bd804e406c7b9940cde8",
+    measurementId: "G-7SCQPXZYNX"
+  };
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -1013,17 +1014,22 @@ function handleLogout() {
 
 function enterApp() {
   document.getElementById('loginPage').style.display = 'none';
-  // 모든 이전 데이터 완전 초기화
+  
+  // 모든 전역 상태 완전 초기화
   units = [];
   contents = {};
   selectedUnitId = null;
   activeMainUnitId = null;
   currentTeacherId = null;
   chatHistory = [];
+  editingMediaLink = null;
+  editingQuizLink = null;
+  savedSelection = null;
   
   if (currentRole === 'teacher') {
-    document.getElementById('teacherApp').classList.add('visible');
+    // 학생 앱 숨기고 선생님 앱 표시
     document.getElementById('studentApp').classList.remove('visible');
+    document.getElementById('teacherApp').classList.add('visible');
     document.getElementById('teacherAvatar').textContent = currentUser.name ? currentUser.name[0] : 'T';
     document.getElementById('teacherNameDisplay').textContent = currentUser.name + ' 선생님';
     document.getElementById('editArea').innerHTML = '<p>단원을 선택하거나 추가하세요...</p>';
@@ -1031,15 +1037,22 @@ function enterApp() {
     loadTeacherUnits();
     loadSettings();
   } else {
-    document.getElementById('studentApp').classList.add('visible');
+    // 선생님 앱 숨기고 학생 앱 표시
     document.getElementById('teacherApp').classList.remove('visible');
+    document.getElementById('studentApp').classList.add('visible');
     document.getElementById('studentAvatar').textContent = currentUser.name ? currentUser.name[0] : 'S';
     document.getElementById('studentNameDisplay').textContent = currentUser.name;
-    document.getElementById('studentContent').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">선생님을 선택하면 교재가 표시됩니다</p>';
+    
+    // 학생 화면 완전 초기화 — 선생님 선택 전에는 빈 화면
     document.getElementById('unitNav').innerHTML = '';
-    document.getElementById('teacherSelect').value = '';
-    document.getElementById('chatMessages').innerHTML = '<div class="chat-bubble chat-ai">안녕하세요! 과학 공부를 도와드리겠습니다.</div>';
+    document.getElementById('studentContent').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">위에서 선생님을 선택하면 교재가 표시됩니다</p>';
+    document.getElementById('chatMessages').innerHTML = '<div class="chat-bubble chat-ai">안녕하세요! 선생님을 선택한 후 질문해 주세요.</div>';
+    document.getElementById('progressBadge').textContent = '진도 0%';
     switchMidView('idle');
+    
+    // 선생님 목록 로드 (select 초기화 먼저)
+    const teacherSel = document.getElementById('teacherSelect');
+    teacherSel.innerHTML = '<option value="">선생님 선택...</option>';
     loadTeacherList();
   }
 }
@@ -1712,6 +1725,8 @@ async function loadTeacherList() {
 
 async function loadTeacherContent() {
   const teacherId = document.getElementById('teacherSelect').value;
+  
+  // 선생님 미선택 시 완전 초기화
   if (!teacherId) {
     units = [];
     contents = {};
@@ -1719,46 +1734,61 @@ async function loadTeacherContent() {
     activeMainUnitId = null;
     currentTeacherId = null;
     document.getElementById('unitNav').innerHTML = '';
-    document.getElementById('studentContent').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">선생님을 선택하면 교재가 표시됩니다</p>';
+    document.getElementById('studentContent').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">위에서 선생님을 선택하면 교재가 표시됩니다</p>';
     switchMidView('idle');
     return;
   }
   
-  // 선생님 전환 시 모든 이전 데이터 완전 초기화
+  // 같은 선생님을 다시 선택한 경우도 새로 로드
+  // 이전 데이터 완전 제거
   units = [];
   contents = {};
   selectedUnitId = null;
   activeMainUnitId = null;
   currentTeacherId = teacherId;
   chatHistory = [];
-  document.getElementById('chatMessages').innerHTML = '<div class="chat-bubble chat-ai">안녕하세요! 과학 공부를 도와드리겠습니다.</div>';
+  
+  // 화면 초기화
   document.getElementById('unitNav').innerHTML = '';
-  document.getElementById('studentContent').innerHTML = '';
+  document.getElementById('studentContent').innerHTML = '<div style="text-align:center;padding:40px 0"><div class="loading-spinner"></div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">교재를 불러오는 중...</div></div>';
+  document.getElementById('chatMessages').innerHTML = '<div class="chat-bubble chat-ai">안녕하세요! 과학 공부를 도와드리겠습니다.</div>';
   switchMidView('idle');
   
   showLoading(true);
   try {
-    console.log('학생: 선생님 콘텐츠 로드 - teacherId:', teacherId);
-    // 선택한 선생님의 단원만 로드
+    console.log('학생: 선생님 콘텐츠 로드 시작 - teacherId:', teacherId);
+    
+    // 이 선생님의 단원만 로드
     const unitSnap = await db.collection('users').doc(teacherId).collection('units').orderBy('order').get();
-    units = [];
-    unitSnap.forEach(doc => units.push({ id: doc.id, ...doc.data() }));
-    console.log('로드된 단원:', units.length, units.map(u => u.name));
+    const loadedUnits = [];
+    unitSnap.forEach(doc => loadedUnits.push({ id: doc.id, ...doc.data() }));
+    
+    // 이 선생님의 콘텐츠만 로드
+    const loadedContents = {};
+    const contentSnap = await db.collection('users').doc(teacherId).collection('contents').get();
+    contentSnap.forEach(doc => loadedContents[doc.id] = doc.data());
+    
+    console.log('로드 완료 - 단원:', loadedUnits.length, '콘텐츠:', Object.keys(loadedContents).length);
+    
+    // 전역 변수에 할당 (로드 완료 후)
+    units = loadedUnits;
+    contents = loadedContents;
     sortUnitsHierarchy();
     
-    // 선택한 선생님의 콘텐츠만 로드
-    contents = {};
-    const contentSnap = await db.collection('users').doc(teacherId).collection('contents').get();
-    contentSnap.forEach(doc => contents[doc.id] = doc.data());
-    
+    // 화면 렌더링
     renderUnitNav();
+    
     if (units.length > 0) {
       const firstLv1 = units.find(u => (u.level || 1) === 1);
       if (firstLv1) {
         activeMainUnitId = firstLv1.id;
+        renderUnitNav(); // activeMainUnitId 반영
         const children = units.filter(c => c.parent === firstLv1.id);
-        loadStudentUnit(children.length > 0 ? children[0].id : firstLv1.id);
-        renderUnitNav();
+        if (children.length > 0) {
+          loadStudentUnit(children[0].id);
+        } else {
+          loadStudentUnit(firstLv1.id);
+        }
       } else {
         loadStudentUnit(units[0].id);
       }
@@ -1767,6 +1797,7 @@ async function loadTeacherContent() {
     }
   } catch(e) { 
     console.error('선생님 콘텐츠 로드 실패:', e);
+    document.getElementById('studentContent').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px 0">교재를 불러오는데 실패했습니다.</p>';
     showToast('교재를 불러오는데 실패했습니다.', 'error');
   }
   showLoading(false);
